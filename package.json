@@ -1,0 +1,38 @@
+{
+  "name": "@educlopez/friction-log",
+  "version": "1.0.0",
+  "description": "GitHub-issue friction log and daily Cursor Cloud Agent investigator, reusable across repos.",
+  "type": "module",
+  "bin": {
+    "friction-log": "./src/cli.mjs"
+  },
+  "files": [
+    "action.yml",
+    "src",
+    "templates"
+  ],
+  "scripts": {
+    "test": "node --test src/*.test.mjs",
+    "scan": "node src/cli.mjs scan",
+    "sweep": "node src/cli.mjs sweep",
+    "init": "node src/cli.mjs init"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/educlopez/friction-log.git"
+  },
+  "bugs": {
+    "url": "https://github.com/educlopez/friction-log/issues"
+  },
+  "homepage": "https://github.com/educlopez/friction-log#readme",
+  "keywords": [
+    "friction",
+    "github-actions",
+    "cursor",
+    "cloud-agents"
+  ]
+}

@@ -1,0 +1,51 @@
+name: Friction log
+description: Scan friction-labeled GitHub issues and spawn one Cursor Cloud Agent investigator.
+author: educlopez
+branding:
+  icon: search
+  color: yellow
+
+inputs:
+  repo:
+    description: owner/name to scan. Defaults to the caller repository.
+    required: false
+    default: ${{ github.repository }}
+  owner:
+    description: Comma-separated GitHub logins that can unskip a skipped issue. Defaults to the repository owner.
+    required: false
+    default: ${{ github.repository_owner }}
+  dry-run:
+    description: Scan and print the prompt without spawning an agent.
+    required: false
+    default: 'false'
+  force:
+    description: Include issues marked skipped.
+    required: false
+    default: 'false'
+  starting-ref:
+    description: Git ref the Cloud Agent starts from.
+    required: false
+    default: main
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: '24'
+    - name: Sweep friction issues
+      shell: bash
+      env:
+        FRICTION_LOG_OWNER: ${{ inputs.owner }}
+        FRICTION_LOG_REF: ${{ inputs.starting-ref }}
+        FRICTION_LOG_REPO: ${{ inputs.repo }}
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        extras=()
+        if [ '${{ inputs.dry-run }}' = 'true' ]; then
+          extras+=(--dry-run)
+        fi
+        if [ '${{ inputs.force }}' = 'true' ]; then
+          extras+=(--force)
+        fi
+        node "${GITHUB_ACTION_PATH}/src/cli.mjs" sweep "${extras[@]}"

@@ -1,8 +1,11 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+  buildAgentRequest,
+  DEFAULT_MODEL,
   extractAgentUrl,
   parseArgs,
+  resolveModel,
   resolveOwnerLogins,
   resolveRepo,
 } from "./sweep.mjs";
@@ -72,5 +75,41 @@ describe("resolveOwnerLogins", () => {
       resolveOwnerLogins({ FRICTION_LOG_OWNER: "educlopez, teammate" }, "x/y"),
       ["educlopez", "teammate"]
     );
+  });
+});
+
+describe("resolveModel", () => {
+  it("defaults to Composer so the Pro third-party pool stays untouched", () => {
+    assert.equal(resolveModel({}), DEFAULT_MODEL);
+    assert.equal(resolveModel({ FRICTION_LOG_MODEL: "  " }), DEFAULT_MODEL);
+  });
+
+  it("returns null for default/none so the field is omitted", () => {
+    assert.equal(resolveModel({ FRICTION_LOG_MODEL: "default" }), null);
+    assert.equal(resolveModel({ FRICTION_LOG_MODEL: "none" }), null);
+  });
+
+  it("passes an explicit model id through", () => {
+    assert.equal(
+      resolveModel({ FRICTION_LOG_MODEL: "claude-4-sonnet-thinking" }),
+      "claude-4-sonnet-thinking"
+    );
+  });
+});
+
+describe("buildAgentRequest", () => {
+  const base = { prompt: "hi", repo: "acme/widgets", startingRef: "main" };
+
+  it("sets model.id when a model is resolved", () => {
+    const request = buildAgentRequest({ ...base, model: "composer-latest" });
+    assert.deepEqual(request.model, { id: "composer-latest" });
+    assert.deepEqual(request.repos, [
+      { startingRef: "main", url: "https://github.com/acme/widgets" },
+    ]);
+  });
+
+  it("omits model entirely when null", () => {
+    const request = buildAgentRequest({ ...base, model: null });
+    assert.equal("model" in request, false);
   });
 });

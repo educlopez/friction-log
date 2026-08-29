@@ -26,6 +26,10 @@ inputs:
     description: Git ref the Cloud Agent starts from.
     required: false
     default: main
+  model:
+    description: Cursor model id for the investigator (see GET /v1/models). Use `default` to fall back to your Cursor default model.
+    required: false
+    default: composer-latest
 
 runs:
   using: composite
@@ -37,6 +41,7 @@ runs:
       shell: bash
       env:
         FRICTION_LOG_OWNER: ${{ inputs.owner }}
+        FRICTION_LOG_MODEL: ${{ inputs.model }}
         FRICTION_LOG_REF: ${{ inputs.starting-ref }}
         FRICTION_LOG_REPO: ${{ inputs.repo }}
         GH_TOKEN: ${{ github.token }}

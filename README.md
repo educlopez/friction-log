@@ -59,6 +59,7 @@ npx github:educlopez/friction-log sweep --force
 | `FRICTION_LOG_REPO`     | `owner/name` (defaults to `GITHUB_REPOSITORY`) |
 | `FRICTION_LOG_OWNER`    | Logins that can unskip (defaults to repo owner) |
 | `FRICTION_LOG_REF`      | Starting git ref (default `main`)            |
+| `FRICTION_LOG_MODEL`    | Cursor model id (default `composer-latest`; `default` = your Cursor default) |
 | `FRICTION_LOG_PAUSED`   | `true` to scan without spawning              |
 
 ## GitHub Action

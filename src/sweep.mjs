@@ -8,6 +8,9 @@ import {
 
 const GITHUB_API = "https://api.github.com";
 const CURSOR_API = "https://api.cursor.com/v1/agents";
+// Composer draws from the (much larger) Cursor Models usage pool, so a daily
+// investigator does not eat the third-party model quota of a Pro plan.
+export const DEFAULT_MODEL = "composer-latest";
 
 /**
  * @param {string[]} argv
@@ -88,20 +91,13 @@ async function listComments(repo, token, issueNumber) {
  * @param {string} repo
  * @param {string} apiKey
  * @param {string} startingRef
+ * @param {string | null} model
  */
-async function spawnCursorAgent(prompt, repo, apiKey, startingRef) {
+async function spawnCursorAgent(prompt, repo, apiKey, startingRef, model) {
   const response = await fetch(CURSOR_API, {
-    body: JSON.stringify({
-      autoCreatePR: false,
-      name: "Friction log investigator",
-      prompt: { text: prompt },
-      repos: [
-        {
-          startingRef,
-          url: `https://github.com/${repo}`,
-        },
-      ],
-    }),
+    body: JSON.stringify(
+      buildAgentRequest({ model, prompt, repo, startingRef })
+    ),
     headers: {
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
@@ -116,6 +112,50 @@ async function spawnCursorAgent(prompt, repo, apiKey, startingRef) {
   }
 
   return JSON.parse(body);
+}
+
+/**
+ * Model id sent as `model.id`. `FRICTION_LOG_MODEL=default` (or `none`) omits
+ * the field so Cursor falls back to the user / team default model.
+ *
+ * @param {NodeJS.ProcessEnv} env
+ * @returns {string | null}
+ */
+export function resolveModel(env) {
+  const raw = (env.FRICTION_LOG_MODEL ?? "").trim();
+
+  if (raw === "") {
+    return DEFAULT_MODEL;
+  }
+
+  if (raw === "default" || raw === "none") {
+    return null;
+  }
+
+  return raw;
+}
+
+/**
+ * @param {{ prompt: string, repo: string, startingRef: string, model: string | null }} input
+ */
+export function buildAgentRequest(input) {
+  /** @type {Record<string, unknown>} */
+  const request = {
+    name: "Friction log investigator",
+    prompt: { text: input.prompt },
+    repos: [
+      {
+        startingRef: input.startingRef,
+        url: `https://github.com/${input.repo}`,
+      },
+    ],
+  };
+
+  if (input.model) {
+    request.model = { id: input.model };
+  }
+
+  return request;
 }
 
 /**
@@ -199,6 +239,7 @@ export async function runSweep(options) {
   const repo = resolveRepo(env);
   const ownerLogins = resolveOwnerLogins(env, repo);
   const startingRef = env.FRICTION_LOG_REF || "main";
+  const model = resolveModel(env);
   const paused = env.FRICTION_LOG_PAUSED === "true";
   const token = env.GH_TOKEN ?? env.GITHUB_TOKEN;
   const cursorKey = env.CURSOR_API_KEY;
@@ -239,6 +280,7 @@ export async function runSweep(options) {
     agentUrl: null,
     dryRun: options.dryRun,
     eligibleCount: eligibleIssues.length,
+    model: model ?? "default",
     openCount: openIssues.length,
     paused,
     repo,
@@ -288,7 +330,8 @@ export async function runSweep(options) {
     prompt,
     repo,
     cursorKey,
-    startingRef
+    startingRef,
+    model
   );
   const agentUrl = extractAgentUrl(spawned);
 

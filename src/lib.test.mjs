@@ -153,3 +153,11 @@ describe("prompt sanitization", () => {
     );
   });
 });
+
+describe("buildInvestigatorPrompt outcome comment", () => {
+  it("requires an outcome comment even when Fixes #N closes the issue", () => {
+    const prompt = buildInvestigatorPrompt([{ number: 1, title: "t" }]);
+    assert.match(prompt, /REQUIRED last step/);
+    assert.match(prompt, /Fixes #N/);
+  });
+});

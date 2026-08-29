@@ -1,6 +1,6 @@
 {
   "name": "@educlopez/friction-log",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "GitHub-issue friction log and daily Cursor Cloud Agent investigator, reusable across repos.",
   "type": "module",
   "bin": {

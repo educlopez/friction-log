@@ -108,6 +108,10 @@ issue. Review that work instead of opening a second PR.
 
 ## Always finish with an outcome comment
 
+This step is mandatory even when the issue is already closed (for example by a
+merged PR whose body says `Fixes #N`). Closing via autolink is not a comment.
+Post the comment on the issue before you stop.
+
 After each listed issue, leave a short GitHub comment that states the outcome
 (`fixed`, `skipped`, `closed`, or `failed`) in one or two sentences. Keep it
 under 600 characters. Never include secrets. If you opened a PR, link it. If you

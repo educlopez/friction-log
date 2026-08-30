@@ -26,6 +26,7 @@ Then:
 1. Create the `friction` label (color `#D4A017`)
 2. Add repository secret `CURSOR_API_KEY` ([Cursor API keys](https://cursor.com/dashboard?tab=integrations))
 3. Optional kill switch: repository variable `FRICTION_LOG_PAUSED=true`
+4. Run your formatter over the generated files — templates are written plain, and a repo whose CI runs `prettier --check` (or similar) will flag them otherwise
 
 One `CURSOR_API_KEY` per GitHub account is enough; add the same secret to each
 repo. The daily job only spawns an agent when that repo has eligible issues.

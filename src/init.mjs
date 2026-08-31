@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -24,6 +25,36 @@ export function renderTemplate(template, values) {
   return template
     .replaceAll("{{REPO}}", values.repo)
     .replaceAll("{{OWNER}}", values.owner);
+}
+
+
+/**
+ * Paths a repo's gitignore would swallow. `init` writing a file that `git add`
+ * then drops is a silent failure with a loud consequence: the sweep spawns an
+ * agent whose prompt points at a skill the repo does not contain.
+ *
+ * @param {string[]} paths
+ * @param {string} cwd
+ * @returns {string[]}
+ */
+export function ignoredPaths(paths, cwd) {
+  if (paths.length === 0) {
+    return [];
+  }
+
+  try {
+    const out = execFileSync("git", ["check-ignore", "--", ...paths], {
+      cwd,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    });
+
+    return out.split("\n").filter(Boolean);
+  } catch (error) {
+    // exit 1 means nothing matched; anything else means git could not answer
+    const status = /** @type {{ status?: number }} */ (error).status;
+    return status === 1 ? [] : [];
+  }
 }
 
 /**
@@ -77,5 +108,13 @@ export async function initRepo(repo, destRoot, options = {}) {
     console.log(`wrote ${file.to}`);
   }
 
-  return { owner, repo, written };
+  const ignored = ignoredPaths(written, destRoot);
+
+  for (const path of ignored) {
+    console.log(
+      `WARNING ${path} is gitignored here. \`git add\` will drop it, and the sweep spawns an agent whose prompt points at the skill. Narrow the ignore rule, then commit it.`
+    );
+  }
+
+  return { ignored, owner, repo, written };
 }

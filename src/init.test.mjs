@@ -1,9 +1,15 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile } from "node:fs/promises";
+import { execFileSync } from "node:child_process";
+import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, it } from "node:test";
-import { initRepo, parseRepoFromRemote, renderTemplate } from "./init.mjs";
+import {
+  ignoredPaths,
+  initRepo,
+  parseRepoFromRemote,
+  renderTemplate,
+} from "./init.mjs";
 
 describe("parseRepoFromRemote", () => {
   it("parses https, ssh, and token remotes", () => {
@@ -54,5 +60,29 @@ describe("initRepo", () => {
     assert.equal(skill.includes("educlopez/smoothui"), true);
     assert.equal(skill.includes("@educlopez"), true);
     assert.equal(workflow.includes("educlopez/friction-log@v1"), true);
+  });
+});
+
+describe("ignoredPaths", () => {
+  it("reports paths a gitignore would swallow", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "friction-ignore-"));
+    execFileSync("git", ["init", "-q"], { cwd: dir });
+    await writeFile(join(dir, ".gitignore"), ".cursor/\n");
+    await mkdir(join(dir, ".cursor", "skills"), { recursive: true });
+    await writeFile(join(dir, ".cursor", "skills", "SKILL.md"), "x");
+    await writeFile(join(dir, "kept.md"), "x");
+
+    assert.deepEqual(
+      ignoredPaths([".cursor/skills/SKILL.md", "kept.md"], dir),
+      [".cursor/skills/SKILL.md"]
+    );
+  });
+
+  it("returns nothing when the directory is not a repo", () => {
+    assert.deepEqual(ignoredPaths(["anything.md"], tmpdir()), []);
+  });
+
+  it("returns nothing for an empty list", () => {
+    assert.deepEqual(ignoredPaths([], tmpdir()), []);
   });
 });

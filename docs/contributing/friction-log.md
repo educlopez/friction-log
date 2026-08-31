@@ -37,9 +37,16 @@ GitHub is the log.
 
 ## Daily investigation
 
-The `Friction log` GitHub Action runs daily at 04:00 UTC. It uses
-`educlopez/friction-log@v1` to list open `friction` issues and, when any are
-eligible and `CURSOR_API_KEY` is set, spawn one Cursor Cloud Agent on
+The `Friction log` GitHub Action runs daily at 04:54 UTC — after the consumer
+repos, so a sweep here never races a release. It pins the action to a commit
+rather than the `v1` tag published from this repo, because a self-referencing
+floating tag would let a bad release investigate itself. Read the exact schedule
+and pin from
+[`.github/workflows/friction-log.yml`](../../.github/workflows/friction-log.yml);
+this page does not restate them.
+
+The sweep lists open `friction` issues and, when any are eligible and
+`CURSOR_API_KEY` is set, spawns one Cursor Cloud Agent on
 `educlopez/friction-log` `main`.
 
 The investigator chooses one outcome per issue:

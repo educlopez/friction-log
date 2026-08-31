@@ -22,13 +22,15 @@ concurrency:
   group: friction-log
   cancel-in-progress: false
 
+# The sweep reads issues over the API. It never checks out the repo, so
+# `contents` stays unset.
 permissions:
-  contents: read
   issues: read
 
 jobs:
   sweep:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: educlopez/friction-log@v1
         with:

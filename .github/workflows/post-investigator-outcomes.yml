@@ -1,0 +1,43 @@
+# One-shot workflow for bc-2fadb9e4 investigator outcome comments. Remove after run.
+name: Post investigator outcomes
+
+on:
+  workflow_dispatch:
+
+permissions:
+  issues: write
+
+jobs:
+  comment:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@60a0d83039c77a4ad9c279a1c9e38f3e2b1941f0 # v7.0.1
+        with:
+          script: |
+            const comments = [
+              {
+                issue_number: 2,
+                body: "**fixed** — `CURSOR_API_KEY` is now only injected when the sweep can spawn an agent (scheduled runs and non-dry `workflow_dispatch`), not on dry runs. See https://github.com/educlopez/friction-log/pull/6.",
+              },
+              {
+                issue_number: 3,
+                body: "**fixed** — The operator doc now pins the scan command to `@v1` in the consumer template (with a pin reminder) and to the workflow commit SHA in this repo. See https://github.com/educlopez/friction-log/pull/6.",
+              },
+              {
+                issue_number: 4,
+                body: "**fixed** — The cron comment now describes intent (early morning UTC, stagger across repos) instead of a fixed Madrid window, and the daily-investigation section points at the workflow file rather than restating 04:00 UTC. See https://github.com/educlopez/friction-log/pull/6.",
+              },
+              {
+                issue_number: 5,
+                body: "**skipped** — This needs a product/design call on where the daily claim lives before code can ship safely.\n\nRecommended approach: when `spawnCursorAgent` succeeds, post an issue comment on each spawned issue with `<!-- friction-log:claimed:YYYY-MM-DD -->`, and extend `isEligible` to reject issues already claimed today (unless `force`). That is durable, visible in the issue timeline, needs no repo variables or Actions cache, and mirrors the existing skip-marker pattern.\n\n@educlopez — reply with `close as already fixed`, `close as invalid`, `ship the recommended fix`, or a different approach; this issue stays skipped until then.\n\n<!-- friction-log:skipped -->",
+              },
+            ];
+
+            for (const comment of comments) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: comment.issue_number,
+                body: comment.body,
+              });
+            }

@@ -66,7 +66,7 @@ give a different approach).
 
 | Command / control                        | Purpose                                 |
 | ---------------------------------------- | --------------------------------------- |
-| `npx github:educlopez/friction-log scan` | Read-only eligibility scan. No agent.   |
+| `npx github:educlopez/friction-log@bb972a83621af7ffa7d993f22791ba70dd4d2995 scan` | Read-only eligibility scan. No agent. Same pin as the workflow above. |
 | Repo variable `FRICTION_LOG_PAUSED=true` | Kill switch: scan, but do not spawn.    |
 | Actions → Friction log → Run workflow    | Manual sweep (`dry_run`, `force`).      |
 

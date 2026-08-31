@@ -5,7 +5,7 @@ name: Friction log
 
 on:
   schedule:
-    # ~05:00–06:00 Europe/Madrid (GitHub cron is UTC-only)
+    # Early morning UTC, before the working day — stagger this minute across repos.
     - cron: '54 4 * * *'
   workflow_dispatch:
     inputs:
@@ -37,5 +37,5 @@ jobs:
           dry-run: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || false }}
           force: ${{ github.event_name == 'workflow_dispatch' && inputs.force || false }}
         env:
-          CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
+          CURSOR_API_KEY: ${{ !(github.event_name == 'workflow_dispatch' && inputs.dry_run) && secrets.CURSOR_API_KEY || '' }}
           FRICTION_LOG_PAUSED: ${{ vars.FRICTION_LOG_PAUSED }}

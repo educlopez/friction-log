@@ -37,10 +37,12 @@ GitHub is the log.
 
 ## Daily investigation
 
-The `Friction log` GitHub Action runs daily at 04:00 UTC. It uses
-`educlopez/friction-log@v1` to list open `friction` issues and, when any are
-eligible and `CURSOR_API_KEY` is set, spawn one Cursor Cloud Agent on
-`{{REPO}}` `main`.
+The `Friction log` GitHub Action runs on the schedule in
+[`.github/workflows/friction-log.yml`](../../.github/workflows/friction-log.yml)
+— typically early morning UTC before the working day. Stagger the cron minute
+across repos if you install in several. It uses `educlopez/friction-log@v1` to
+list open `friction` issues and, when any are eligible and `CURSOR_API_KEY` is
+set, spawn one Cursor Cloud Agent on `{{REPO}}` `main`.
 
 The investigator chooses one outcome per issue:
 
@@ -59,7 +61,7 @@ give a different approach).
 
 | Command / control                        | Purpose                                 |
 | ---------------------------------------- | --------------------------------------- |
-| `npx github:educlopez/friction-log scan` | Read-only eligibility scan. No agent.   |
+| `npx github:educlopez/friction-log@v1 scan` | Read-only eligibility scan. No agent. Pin to the same commit as the workflow after `init`. |
 | Repo variable `FRICTION_LOG_PAUSED=true` | Kill switch: scan, but do not spawn.    |
 | Actions → Friction log → Run workflow    | Manual sweep (`dry_run`, `force`).      |
 

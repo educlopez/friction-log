@@ -83,3 +83,10 @@ the spawned Cloud Agent, not by this Action.
 Entries in the tree go stale. GitHub issues stay visible, searchable, and
 closable. The shared Action means eligibility rules and spawn logic live in one
 place instead of drifting per repo.
+
+## This repo eats its own dog food
+
+Papercuts in this repository are GitHub issues labeled `friction`, investigated
+by the same daily sweep this package ships. The workflow pins the action to a
+commit rather than the `v1` tag it publishes: a self-referencing floating tag
+would let a bad release investigate itself.

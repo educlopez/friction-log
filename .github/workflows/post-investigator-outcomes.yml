@@ -3,6 +3,9 @@ name: Post investigator outcomes
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [.github/workflows/post-investigator-outcomes.yml]
 
 permissions:
   issues: write

@@ -1,6 +1,7 @@
 import { appendFile } from "node:fs/promises";
 import {
   buildInvestigatorPrompt,
+  claimMarkerForDate,
   DEFAULT_OWNER_LOGINS,
   FRICTION_LABEL,
   isEligible,
@@ -189,6 +190,44 @@ export function extractAgentUrl(payload) {
 }
 
 /**
+ * @param {string} repo
+ * @param {string} token
+ * @param {number} issueNumber
+ * @param {string} body
+ */
+async function postIssueComment(repo, token, issueNumber, body) {
+  const url = `${GITHUB_API}/repos/${repo}/issues/${issueNumber}/comments`;
+  const response = await fetch(url, {
+    body: JSON.stringify({ body }),
+    headers: {
+      Accept: "application/vnd.github+json",
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+      "X-GitHub-Api-Version": "2022-11-28",
+    },
+    method: "POST",
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(
+      `GitHub ${response.status} POST /issues/${issueNumber}/comments: ${text}`
+    );
+  }
+
+  return await response.json();
+}
+
+/**
+ * @param {Record<string, string | boolean | number | null>} result
+ */
+async function finishSweep(result) {
+  console.log(JSON.stringify(result, null, 2));
+  await writeGithubOutput(result);
+  return result;
+}
+
+/**
  * @param {Record<string, string | boolean | number | null>} result
  */
 async function writeGithubOutput(result) {
@@ -288,17 +327,13 @@ export async function runSweep(options) {
     spawned: false,
   };
 
-  console.log(JSON.stringify(result, null, 2));
-
   if (eligibleIssues.length === 0) {
-    await writeGithubOutput(result);
-    return result;
+    return finishSweep(result);
   }
 
   if (paused) {
     console.log("Paused via FRICTION_LOG_PAUSED. Not spawning.");
-    await writeGithubOutput(result);
-    return result;
+    return finishSweep(result);
   }
 
   const prompt = buildInvestigatorPrompt(
@@ -314,16 +349,14 @@ export async function runSweep(options) {
   if (options.dryRun) {
     console.log("Dry run. Prompt that would be sent:\n");
     console.log(prompt);
-    await writeGithubOutput(result);
-    return result;
+    return finishSweep(result);
   }
 
   if (!cursorKey) {
     console.log(
       "CURSOR_API_KEY is not set. Scan complete; not spawning an agent."
     );
-    await writeGithubOutput(result);
-    return result;
+    return finishSweep(result);
   }
 
   const spawned = await spawnCursorAgent(
@@ -337,7 +370,14 @@ export async function runSweep(options) {
 
   result.spawned = true;
   result.agentUrl = agentUrl;
+
+  const claimBody = claimMarkerForDate();
+  await Promise.all(
+    eligibleIssues.map((issue) =>
+      postIssueComment(repo, token, Number(issue.number), claimBody)
+    )
+  );
+
   console.log(`Spawned investigator: ${agentUrl ?? JSON.stringify(spawned)}`);
-  await writeGithubOutput(result);
-  return result;
+  return finishSweep(result);
 }

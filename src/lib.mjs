@@ -1,4 +1,5 @@
 export const SKIP_MARKER = "<!-- friction-log:skipped -->";
+export const CLAIM_MARKER_PREFIX = "<!-- friction-log:claimed:";
 export const FRICTION_LABEL = "friction";
 export const MAX_ISSUE_TEXT_CHARS = 4000;
 export const MAX_ISSUES_IN_PROMPT = 20;
@@ -37,6 +38,29 @@ export function lastSkipIndex(comments) {
 }
 
 /**
+ * @param {Date} [date]
+ * @returns {string}
+ */
+export function claimMarkerForDate(date = new Date()) {
+  const yyyy = date.getUTCFullYear();
+  const mm = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const dd = String(date.getUTCDate()).padStart(2, "0");
+
+  return `${CLAIM_MARKER_PREFIX}${yyyy}-${mm}-${dd} -->`;
+}
+
+/**
+ * @param {{ body?: string | null }[]} comments
+ * @param {Date} [date]
+ * @returns {boolean}
+ */
+export function isClaimedOnDate(comments, date = new Date()) {
+  const marker = claimMarkerForDate(date);
+
+  return comments.some((comment) => comment.body?.includes(marker));
+}
+
+/**
  * @param {{ login?: string | null }} user
  * @param {string[]} ownerLogins
  * @returns {boolean}
@@ -65,12 +89,13 @@ function isOwnerComment(user, ownerLogins) {
  *
  * @param {FrictionIssue} issue
  * @param {FrictionComment[]} comments
- * @param {{ ownerLogins?: string[], force?: boolean }} [options]
+ * @param {{ ownerLogins?: string[], force?: boolean, now?: Date }} [options]
  * @returns {{ eligible: boolean, reason: string }}
  */
 export function isEligible(issue, comments, options = {}) {
   const ownerLogins = options.ownerLogins ?? DEFAULT_OWNER_LOGINS;
   const force = options.force === true;
+  const now = options.now ?? new Date();
 
   if (issue.pull_request) {
     return { eligible: false, reason: "pull-request" };
@@ -90,6 +115,10 @@ export function isEligible(issue, comments, options = {}) {
 
   if (force) {
     return { eligible: true, reason: "force" };
+  }
+
+  if (isClaimedOnDate(comments, now)) {
+    return { eligible: false, reason: "claimed" };
   }
 
   const skipAt = lastSkipIndex(comments);

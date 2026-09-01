@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   buildInvestigatorPrompt,
+  claimMarkerForDate,
   formatIssueAsData,
   isEligible,
   lastSkipIndex,
@@ -101,6 +102,37 @@ describe("isEligible", () => {
       eligible: true,
       reason: "force",
     });
+  });
+
+  it("rejects issues already claimed today", () => {
+    const today = new Date("2026-09-01T12:00:00Z");
+    const comments = [{ body: claimMarkerForDate(today) }];
+
+    assert.deepEqual(
+      isEligible(frictionIssue, comments, { now: today }),
+      { eligible: false, reason: "claimed" }
+    );
+  });
+
+  it("ignores claim markers from other days", () => {
+    const today = new Date("2026-09-01T12:00:00Z");
+    const yesterday = new Date("2026-08-31T12:00:00Z");
+    const comments = [{ body: claimMarkerForDate(yesterday) }];
+
+    assert.deepEqual(
+      isEligible(frictionIssue, comments, { now: today }),
+      { eligible: true, reason: "open" }
+    );
+  });
+
+  it("force includes issues claimed today", () => {
+    const today = new Date("2026-09-01T12:00:00Z");
+    const comments = [{ body: claimMarkerForDate(today) }];
+
+    assert.deepEqual(
+      isEligible(frictionIssue, comments, { force: true, now: today }),
+      { eligible: true, reason: "force" }
+    );
   });
 });
 

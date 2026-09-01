@@ -22,10 +22,10 @@ concurrency:
   group: friction-log
   cancel-in-progress: false
 
-# The sweep reads issues over the API. It never checks out the repo, so
-# `contents` stays unset.
+# The sweep reads issues over the API and posts daily claim markers after a
+# successful spawn. It never checks out the repo, so `contents` stays unset.
 permissions:
-  issues: read
+  issues: write
 
 jobs:
   sweep:

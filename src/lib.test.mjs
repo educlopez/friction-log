@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   buildInvestigatorPrompt,
-  CLAIM_BOT_LOGIN,
+  AUTOMATION_LOGINS,
   claimMarkerForDate,
   formatIssueAsData,
   isEligible,
@@ -49,7 +49,7 @@ describe("isEligible", () => {
 
   it("skips after a skip marker when the owner has not replied", () => {
     const comments = [
-      { body: `looks hard\n${SKIP_MARKER}`, user: { login: "cursoragent" } },
+      { body: `looks hard\n${SKIP_MARKER}`, user: { login: "cursor[bot]" } },
       { body: "same", user: { login: "someone-else" } },
     ];
 
@@ -61,7 +61,7 @@ describe("isEligible", () => {
 
   it("becomes eligible again after the owner replies past the skip marker", () => {
     const comments = [
-      { body: SKIP_MARKER, user: { login: "cursoragent" } },
+      { body: SKIP_MARKER, user: { login: "cursor[bot]" } },
       { body: "ship the recommended fix", user: { login: "educlopez" } },
     ];
 
@@ -73,7 +73,7 @@ describe("isEligible", () => {
 
   it("stays skipped when a non-owner comments after the marker", () => {
     const comments = [
-      { body: SKIP_MARKER, user: { login: "cursoragent" } },
+      { body: SKIP_MARKER, user: { login: "cursor[bot]" } },
       { body: "please fix anyway", user: { login: "random" } },
     ];
 
@@ -85,9 +85,9 @@ describe("isEligible", () => {
 
   it("uses the latest skip marker, not an older one", () => {
     const comments = [
-      { body: SKIP_MARKER, user: { login: "cursoragent" } },
+      { body: SKIP_MARKER, user: { login: "cursor[bot]" } },
       { body: "ok ship it", user: { login: "educlopez" } },
-      { body: SKIP_MARKER, user: { login: "cursoragent" } },
+      { body: SKIP_MARKER, user: { login: "cursor[bot]" } },
     ];
 
     assert.deepEqual(isEligible(frictionIssue, comments), {
@@ -97,7 +97,7 @@ describe("isEligible", () => {
   });
 
   it("force includes skipped issues", () => {
-    const comments = [{ body: SKIP_MARKER, user: { login: "cursoragent" } }];
+    const comments = [{ body: SKIP_MARKER, user: { login: "cursor[bot]" } }];
 
     assert.deepEqual(isEligible(frictionIssue, comments, { force: true }), {
       eligible: true,
@@ -108,7 +108,7 @@ describe("isEligible", () => {
   it("rejects issues already claimed today by the automation", () => {
     const today = new Date("2026-09-01T12:00:00Z");
     const comments = [
-      { body: claimMarkerForDate(today), user: { login: CLAIM_BOT_LOGIN } },
+      { body: claimMarkerForDate(today), user: { login: AUTOMATION_LOGINS[0] } },
     ];
 
     assert.deepEqual(isEligible(frictionIssue, comments, { now: today }), {
@@ -158,7 +158,7 @@ describe("isEligible", () => {
     const today = new Date("2026-09-01T12:00:00Z");
     const yesterday = new Date("2026-08-31T12:00:00Z");
     const comments = [
-      { body: claimMarkerForDate(yesterday), user: { login: CLAIM_BOT_LOGIN } },
+      { body: claimMarkerForDate(yesterday), user: { login: AUTOMATION_LOGINS[0] } },
     ];
 
     assert.deepEqual(isEligible(frictionIssue, comments, { now: today }), {
@@ -170,7 +170,7 @@ describe("isEligible", () => {
   it("force includes issues claimed today", () => {
     const today = new Date("2026-09-01T12:00:00Z");
     const comments = [
-      { body: claimMarkerForDate(today), user: { login: CLAIM_BOT_LOGIN } },
+      { body: claimMarkerForDate(today), user: { login: AUTOMATION_LOGINS[0] } },
     ];
 
     assert.deepEqual(
@@ -183,12 +183,31 @@ describe("isEligible", () => {
 describe("lastSkipIndex", () => {
   it("finds the HTML skip marker and ignores similar prose", () => {
     const comments = [
-      { body: "this was skipped last week" },
-      { body: `note\n${SKIP_MARKER}\n` },
-      { body: "friction-log:skipped without html" },
+      { body: "this was skipped last week", user: { login: "cursor[bot]" } },
+      { body: `note\n${SKIP_MARKER}\n`, user: { login: "cursor[bot]" } },
+      { body: "friction-log:skipped without html", user: { login: "cursor[bot]" } },
     ];
 
     assert.equal(lastSkipIndex(comments), 1);
+  });
+
+  it("ignores a skip marker from an untrusted commenter", () => {
+    const comments = [
+      { body: SKIP_MARKER, user: { login: "drive-by" } },
+      { body: SKIP_MARKER },
+    ];
+
+    assert.equal(lastSkipIndex(comments), -1);
+    assert.deepEqual(isEligible(frictionIssue, comments), {
+      eligible: true,
+      reason: "open",
+    });
+  });
+
+  it("honours a skip marker from an owner login", () => {
+    const comments = [{ body: SKIP_MARKER, user: { login: "Educlopez" } }];
+
+    assert.equal(lastSkipIndex(comments, ["educlopez"]), 0);
   });
 });
 

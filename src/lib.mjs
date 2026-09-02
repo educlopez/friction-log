@@ -1,6 +1,10 @@
 export const SKIP_MARKER = "<!-- friction-log:skipped -->";
 export const CLAIM_MARKER_PREFIX = "<!-- friction-log:claimed:";
-export const CLAIM_BOT_LOGIN = "github-actions[bot]";
+// Identities the automation posts as: `github-actions[bot]` for the sweep and
+// the investigator's outcome comments, `cursor[bot]` for the actions it takes
+// through its own app. Skip and claim markers are control signals, so both are
+// honoured only from these or from an owner login.
+export const AUTOMATION_LOGINS = ["github-actions[bot]", "cursor[bot]"];
 export const FRICTION_LABEL = "friction";
 export const MAX_ISSUE_TEXT_CHARS = 4000;
 export const MAX_ISSUES_IN_PROMPT = 20;
@@ -23,14 +27,23 @@ export function sanitizeIssueText(text) {
 }
 
 /**
- * @param {{ body?: string | null }[]} comments
+ * A skip marker suppresses an issue until an owner replies, so it is only
+ * honoured from a trusted author. Without that check any commenter on a public
+ * repository could silence an issue indefinitely by posting the marker.
+ *
+ * @param {FrictionComment[]} comments
+ * @param {string[]} [ownerLogins]
  * @returns {number}
  */
-export function lastSkipIndex(comments) {
+export function lastSkipIndex(comments, ownerLogins = DEFAULT_OWNER_LOGINS) {
+  const trusted = [...AUTOMATION_LOGINS, ...ownerLogins];
   let index = -1;
 
   for (const [i, comment] of comments.entries()) {
-    if (comment.body?.includes(SKIP_MARKER)) {
+    if (
+      comment.body?.includes(SKIP_MARKER) &&
+      isOwnerComment(comment.user ?? {}, trusted)
+    ) {
       index = i;
     }
   }
@@ -66,7 +79,7 @@ export function isClaimedOnDate(
   ownerLogins = DEFAULT_OWNER_LOGINS
 ) {
   const marker = claimMarkerForDate(date);
-  const trusted = [CLAIM_BOT_LOGIN, ...ownerLogins];
+  const trusted = [...AUTOMATION_LOGINS, ...ownerLogins];
 
   return comments.some(
     (comment) =>
@@ -136,7 +149,7 @@ export function isEligible(issue, comments, options = {}) {
     return { eligible: false, reason: "claimed" };
   }
 
-  const skipAt = lastSkipIndex(comments);
+  const skipAt = lastSkipIndex(comments, ownerLogins);
 
   if (skipAt === -1) {
     return { eligible: true, reason: "open" };

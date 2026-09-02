@@ -62,7 +62,9 @@ The investigator chooses one outcome per issue:
 
 A skip comment includes `<!-- friction-log:skipped -->`. Later daily runs ignore
 that issue until @educlopez comments (approve the recommendation, close it, or
-give a different approach).
+give a different approach). The marker counts only when the automation or an
+owner login wrote it — otherwise any commenter on a public repository could
+silence an issue indefinitely.
 
 After a successful spawn the sweep comments
 `<!-- friction-log:claimed:YYYY-MM-DD -->` on each issue it handed to the

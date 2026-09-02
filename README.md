@@ -214,8 +214,12 @@ An open `friction` issue is eligible unless one of these applies:
 - **Claimed today** — the sweep comments
   `<!-- friction-log:claimed:YYYY-MM-DD -->` on each issue it hands to an agent,
   so a second run the same UTC day does not spawn a rival investigator on the
-  same work. Only `github-actions[bot]` or an owner login can set a claim;
-  otherwise any commenter on a public repo could silence the day's sweep.
+  same work.
+
+Both markers are control signals, so both are honoured only from the automation
+(`github-actions[bot]`, `cursor[bot]`) or an owner login. Without that check any
+commenter on a public repo could silence an issue — or the whole day's sweep —
+just by pasting a marker.
 
 At most 20 issues go into one prompt, and only those get claimed — a longer
 backlog stays eligible so a later run picks it up instead of being suppressed

@@ -161,7 +161,7 @@ the source" is.
 From the target checkout:
 
 ```bash
-npx github:educlopez/friction-log#v1.3.0 init
+npx github:educlopez/friction-log#v1.3.1 init
 ```
 
 Pin that ref. Without `#v1.3.0`, `npx` resolves and executes whatever is on
@@ -231,9 +231,9 @@ unread.
 
 ```bash
 # in a repo with GH_TOKEN / GITHUB_TOKEN — pin the ref, as with init
-npx github:educlopez/friction-log#v1.3.0 scan             # read-only: what would happen
-npx github:educlopez/friction-log#v1.3.0 sweep --dry-run  # also prints the exact prompt
-npx github:educlopez/friction-log#v1.3.0 sweep --force    # include skipped and claimed
+npx github:educlopez/friction-log#v1.3.1 scan             # read-only: what would happen
+npx github:educlopez/friction-log#v1.3.1 sweep --dry-run  # also prints the exact prompt
+npx github:educlopez/friction-log#v1.3.1 sweep --force    # include skipped and claimed
 ```
 
 `scan` never spawns an agent, so it is safe to run against any repo you can
@@ -241,7 +241,7 @@ read:
 
 ```console
 $ FRICTION_LOG_REPO=educlopez/friction-log GH_TOKEN=$(gh auth token) \
-    npx github:educlopez/friction-log#v1.3.0 scan
+    npx github:educlopez/friction-log#v1.3.1 scan
 {
   "eligibleCount": 1,
   "openCount": 1,

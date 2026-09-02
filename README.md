@@ -161,8 +161,13 @@ the source" is.
 From the target checkout:
 
 ```bash
-npx github:educlopez/friction-log init
+npx github:educlopez/friction-log#v1.3.0 init
 ```
+
+Pin that ref. Without `#v1.3.0`, `npx` resolves and executes whatever is on
+this repo's default branch at that moment — the same trust problem the Action
+pin below solves, one step earlier. Latest tags:
+[releases](https://github.com/educlopez/friction-log/tags).
 
 That writes:
 
@@ -221,10 +226,10 @@ unread.
 ## CLI
 
 ```bash
-# in a repo with GH_TOKEN / GITHUB_TOKEN
-npx github:educlopez/friction-log scan          # read-only: what would happen
-npx github:educlopez/friction-log sweep --dry-run  # also prints the exact prompt
-npx github:educlopez/friction-log sweep --force    # include skipped and claimed
+# in a repo with GH_TOKEN / GITHUB_TOKEN — pin the ref, as with init
+npx github:educlopez/friction-log#v1.3.0 scan             # read-only: what would happen
+npx github:educlopez/friction-log#v1.3.0 sweep --dry-run  # also prints the exact prompt
+npx github:educlopez/friction-log#v1.3.0 sweep --force    # include skipped and claimed
 ```
 
 `scan` never spawns an agent, so it is safe to run against any repo you can
@@ -232,7 +237,7 @@ read:
 
 ```console
 $ FRICTION_LOG_REPO=educlopez/friction-log GH_TOKEN=$(gh auth token) \
-    npx github:educlopez/friction-log scan
+    npx github:educlopez/friction-log#v1.3.0 scan
 {
   "eligibleCount": 1,
   "openCount": 1,

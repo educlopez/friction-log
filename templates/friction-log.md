@@ -60,13 +60,19 @@ that issue until @{{OWNER}} comments (approve the recommendation, close it, or
 give a different approach).
 
 After a successful spawn the sweep comments
-`<!-- friction-log:claimed:YYYY-MM-DD -->` on every issue it handed to the
-agent, so a second run the same UTC day finds nothing eligible and does not
-spawn a rival investigator. `--force` ignores the claim. A claim counts only
-when `github-actions[bot]` or an owner login wrote it — otherwise any commenter
-on a public repository could suppress the day's sweep. When a claim write
-fails, the sweep still finishes and names the unclaimed issues in
-`result.unclaimed`; those issues can draw a second agent later that day.
+`<!-- friction-log:claimed:YYYY-MM-DD -->` on each issue it handed to the
+agent, and later runs the same UTC day treat those issues as ineligible. A
+second investigator is therefore spawned only for work the first one never
+received. `--force` ignores claims entirely.
+
+Two limits are deliberate. A claim counts only when `github-actions[bot]` or an
+owner login wrote it — otherwise any commenter on a public repository could
+suppress the day's sweep. And only the issues actually listed in the prompt are
+claimed (at most 20); a longer backlog stays eligible so a later run picks it
+up instead of being silenced unread.
+
+When a claim write fails the sweep still finishes, and names those issue
+numbers in `result.unclaimed`. They can draw a second agent later that day.
 
 ## Operator controls
 

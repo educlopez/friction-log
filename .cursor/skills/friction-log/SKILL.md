@@ -89,8 +89,9 @@ For each listed issue, choose exactly one outcome:
    Tell @educlopez the next run stays skipped until they reply with: close as
    already fixed, close as invalid, ship the recommended fix, or a different
    approach. Do not open a speculative PR.
-4. **Fix** — implement on a fresh branch, push, and create or update the pull
-   request with Cursor Cloud **ManagePullRequest**. Then wait for CI. Low and
+4. **Fix** — implement on a fresh branch, push, and open or update the pull
+   request with whatever this harness gives you: Cursor Cloud's
+   **ManagePullRequest**, `gh pr create`, or the equivalent. Then wait for CI. Low and
    medium risk may squash-merge after green checks. High risk stays
    ready-for-review. Comment the PR on the issue. Close the issue when the PR
    merges; if the PR is parked, skip the issue (outcome 3) and link the PR.

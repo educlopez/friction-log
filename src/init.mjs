@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { lstat, mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -57,6 +57,36 @@ export function ignoredPaths(paths, cwd) {
     const status = /** @type {{ status?: number }} */ (error).status;
     return status === 1 ? [] : [];
   }
+}
+
+/**
+ * `init` writes into a checkout it did not create. A symlinked destination
+ * would let that tree redirect the write outside itself, so refuse to follow
+ * one rather than resolving it.
+ *
+ * @param {string} path
+ * @returns {Promise<string | null>} Contents, or null when the path is absent.
+ */
+export async function readRegularFile(path) {
+  let stats;
+
+  try {
+    stats = await lstat(path);
+  } catch (error) {
+    if (/** @type {{ code?: string }} */ (error).code === "ENOENT") {
+      return null;
+    }
+
+    throw error;
+  }
+
+  if (stats.isSymbolicLink()) {
+    throw new Error(
+      `${path} is a symbolic link. Refusing to write through it — replace it with a regular file and re-run.`
+    );
+  }
+
+  return await readFile(path, "utf8");
 }
 
 /**
@@ -124,14 +154,11 @@ export async function initRepo(repo, destRoot, options = {}) {
     const dest = join(destRoot, file.to);
     const source = join(PACKAGE_ROOT, file.from);
 
-    try {
-      await readFile(dest);
-      if (!options.force) {
-        console.log(`skip existing ${file.to} (pass --force to overwrite)`);
-        continue;
-      }
-    } catch {
-      // destination does not exist
+    const current = await readRegularFile(dest);
+
+    if (current !== null && !options.force) {
+      console.log(`skip existing ${file.to} (pass --force to overwrite)`);
+      continue;
     }
 
     const template = await readFile(source, "utf8");
@@ -146,16 +173,10 @@ export async function initRepo(repo, destRoot, options = {}) {
     await readFile(join(PACKAGE_ROOT, "templates/agents.md"), "utf8"),
     values
   );
-  /** @type {string | null} */
-  let existingAgents = null;
-
-  try {
-    existingAgents = await readFile(agentsPath, "utf8");
-  } catch {
-    // AGENTS.md does not exist yet
-  }
-
-  const agents = mergeAgentsSection(existingAgents, agentsTemplate);
+  const agents = mergeAgentsSection(
+    await readRegularFile(agentsPath),
+    agentsTemplate
+  );
 
   if (agents.action === "present") {
     console.log("skip AGENTS.md (friction log section already present)");

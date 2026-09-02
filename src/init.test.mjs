@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, it } from "node:test";
@@ -10,6 +10,7 @@ import {
   initRepo,
   mergeAgentsSection,
   parseRepoFromRemote,
+  readRegularFile,
   renderTemplate,
 } from "./init.mjs";
 
@@ -103,6 +104,33 @@ describe("initRepo", () => {
 
     assert.equal(await readFile(join(dest, "AGENTS.md"), "utf8"), first);
     assert.equal(second.written.includes("AGENTS.md"), false);
+  });
+});
+
+describe("readRegularFile", () => {
+  it("returns null for an absent path and refuses to follow a symlink", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "friction-symlink-"));
+    const outside = join(dir, "outside.md");
+    await writeFile(outside, "sentinel\n");
+    await symlink(outside, join(dir, "AGENTS.md"));
+
+    assert.equal(await readRegularFile(join(dir, "nope.md")), null);
+    await assert.rejects(() => readRegularFile(join(dir, "AGENTS.md")), {
+      message: /symbolic link/,
+    });
+    assert.equal(await readFile(outside, "utf8"), "sentinel\n");
+  });
+
+  it("leaves a linked file untouched when init runs", async () => {
+    const dest = await mkdtemp(join(tmpdir(), "friction-symlink-init-"));
+    const outside = join(dest, "outside.md");
+    await writeFile(outside, "sentinel\n");
+    await symlink(outside, join(dest, "AGENTS.md"));
+
+    await assert.rejects(() => initRepo("educlopez/smoothui", dest), {
+      message: /symbolic link/,
+    });
+    assert.equal(await readFile(outside, "utf8"), "sentinel\n");
   });
 });
 

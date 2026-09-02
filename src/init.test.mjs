@@ -123,6 +123,13 @@ describe("mergeAgentsSection", () => {
       "present"
     );
   });
+
+  it("treats a blank AGENTS.md as absent rather than appending to nothing", () => {
+    assert.deepEqual(mergeAgentsSection("\n  \n", section), {
+      action: "created",
+      text: `${AGENTS_MARKER}\n\n## Friction log\n`,
+    });
+  });
 });
 
 describe("ignoredPaths", () => {

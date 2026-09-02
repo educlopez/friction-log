@@ -70,17 +70,17 @@ export function ignoredPaths(paths, cwd) {
  * @returns {{ action: "created" | "appended" | "present", text: string }}
  */
 export function mergeAgentsSection(existing, section) {
-  if (existing === null) {
-    return { action: "created", text: `${section.trimEnd()}\n` };
+  const body = `${section.trimEnd()}\n`;
+
+  if (existing === null || existing.trim() === "") {
+    return { action: "created", text: body };
   }
 
   if (existing.includes(AGENTS_MARKER)) {
     return { action: "present", text: existing };
   }
 
-  const base = existing.trimEnd();
-
-  return { action: "appended", text: `${base}\n\n${section.trimEnd()}\n` };
+  return { action: "appended", text: `${existing.trimEnd()}\n\n${body}` };
 }
 
 /**

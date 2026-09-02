@@ -5,6 +5,8 @@ import { fileURLToPath } from "node:url";
 
 const PACKAGE_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 
+export const AGENTS_MARKER = "<!-- friction-log:agents -->";
+
 /**
  * @param {string} url
  * @returns {string | null}
@@ -58,6 +60,30 @@ export function ignoredPaths(paths, cwd) {
 }
 
 /**
+ * `AGENTS.md` is the cross-harness convention: a single root file, read by
+ * agents that do not load per-directory skills. It is the target repository's
+ * own file, so this appends a marked section instead of overwriting, and does
+ * nothing when the marker is already there.
+ *
+ * @param {string | null} existing Current AGENTS.md content, or null when absent.
+ * @param {string} section Rendered section to merge in.
+ * @returns {{ action: "created" | "appended" | "present", text: string }}
+ */
+export function mergeAgentsSection(existing, section) {
+  if (existing === null) {
+    return { action: "created", text: `${section.trimEnd()}\n` };
+  }
+
+  if (existing.includes(AGENTS_MARKER)) {
+    return { action: "present", text: existing };
+  }
+
+  const base = existing.trimEnd();
+
+  return { action: "appended", text: `${base}\n\n${section.trimEnd()}\n` };
+}
+
+/**
  * @param {string} repo
  * @param {string} destRoot
  * @param {{ force?: boolean }} [options]
@@ -69,6 +95,13 @@ export async function initRepo(repo, destRoot, options = {}) {
     {
       from: "templates/friction.yml",
       to: ".github/ISSUE_TEMPLATE/friction.yml",
+    },
+    // One rendered copy per harness skill convention. Cursor loads the
+    // investigator; Claude Code loads the same policy when you hit friction
+    // locally. `init --force` re-syncs both from the template.
+    {
+      from: "templates/SKILL.md",
+      to: ".claude/skills/friction-log/SKILL.md",
     },
     {
       from: "templates/SKILL.md",
@@ -106,6 +139,30 @@ export async function initRepo(repo, destRoot, options = {}) {
     await writeFile(dest, renderTemplate(template, values));
     written.push(file.to);
     console.log(`wrote ${file.to}`);
+  }
+
+  const agentsPath = join(destRoot, "AGENTS.md");
+  const agentsTemplate = renderTemplate(
+    await readFile(join(PACKAGE_ROOT, "templates/agents.md"), "utf8"),
+    values
+  );
+  /** @type {string | null} */
+  let existingAgents = null;
+
+  try {
+    existingAgents = await readFile(agentsPath, "utf8");
+  } catch {
+    // AGENTS.md does not exist yet
+  }
+
+  const agents = mergeAgentsSection(existingAgents, agentsTemplate);
+
+  if (agents.action === "present") {
+    console.log("skip AGENTS.md (friction log section already present)");
+  } else {
+    await writeFile(agentsPath, agents.text);
+    written.push("AGENTS.md");
+    console.log(`${agents.action} AGENTS.md`);
   }
 
   const ignored = ignoredPaths(written, destRoot);

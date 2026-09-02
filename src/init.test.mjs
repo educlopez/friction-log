@@ -5,8 +5,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, it } from "node:test";
 import {
+  AGENTS_MARKER,
   ignoredPaths,
   initRepo,
+  mergeAgentsSection,
   parseRepoFromRemote,
   renderTemplate,
 } from "./init.mjs";
@@ -56,10 +58,70 @@ describe("initRepo", () => {
     );
 
     assert.equal(result.owner, "educlopez");
-    assert.equal(result.written.length, 4);
+    assert.equal(result.written.length, 6);
     assert.equal(skill.includes("educlopez/smoothui"), true);
     assert.equal(skill.includes("@educlopez"), true);
     assert.equal(workflow.includes("educlopez/friction-log@v1"), true);
+  });
+
+  it("writes the same skill to every harness convention", async () => {
+    const dest = await mkdtemp(join(tmpdir(), "friction-log-init-"));
+    await initRepo("educlopez/smoothui", dest);
+    const claude = await readFile(
+      join(dest, ".claude/skills/friction-log/SKILL.md"),
+      "utf8"
+    );
+    const cursor = await readFile(
+      join(dest, ".cursor/skills/friction-log/SKILL.md"),
+      "utf8"
+    );
+
+    assert.equal(claude, cursor);
+    assert.equal(claude.includes("{{REPO}}"), false);
+  });
+
+  it("creates AGENTS.md when the repo has none", async () => {
+    const dest = await mkdtemp(join(tmpdir(), "friction-log-init-"));
+    const result = await initRepo("educlopez/smoothui", dest);
+    const agents = await readFile(join(dest, "AGENTS.md"), "utf8");
+
+    assert.equal(result.written.includes("AGENTS.md"), true);
+    assert.equal(agents.includes(AGENTS_MARKER), true);
+    assert.equal(agents.includes("educlopez/smoothui"), true);
+  });
+
+  it("appends to an existing AGENTS.md without touching it, then stops", async () => {
+    const dest = await mkdtemp(join(tmpdir(), "friction-log-init-"));
+    await writeFile(join(dest, "AGENTS.md"), "# Repo\n\nRun `pnpm test`.\n");
+    await initRepo("educlopez/smoothui", dest);
+    const first = await readFile(join(dest, "AGENTS.md"), "utf8");
+
+    assert.equal(first.startsWith("# Repo\n\nRun `pnpm test`.\n"), true);
+    assert.equal(first.includes(AGENTS_MARKER), true);
+
+    const second = await initRepo("educlopez/smoothui", dest);
+
+    assert.equal(await readFile(join(dest, "AGENTS.md"), "utf8"), first);
+    assert.equal(second.written.includes("AGENTS.md"), false);
+  });
+});
+
+describe("mergeAgentsSection", () => {
+  const section = `${AGENTS_MARKER}\n\n## Friction log\n`;
+
+  it("creates, appends once, and then reports the section present", () => {
+    assert.deepEqual(mergeAgentsSection(null, section), {
+      action: "created",
+      text: `${AGENTS_MARKER}\n\n## Friction log\n`,
+    });
+    assert.deepEqual(mergeAgentsSection("# Repo\n", section), {
+      action: "appended",
+      text: `# Repo\n\n${AGENTS_MARKER}\n\n## Friction log\n`,
+    });
+    assert.equal(
+      mergeAgentsSection(`# Repo\n\n${section}`, section).action,
+      "present"
+    );
   });
 });
 

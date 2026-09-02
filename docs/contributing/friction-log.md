@@ -7,9 +7,11 @@ This is not a product feature request. File those as ordinary issues. This page
 is for developing `educlopez/friction-log`: confusing docs, a command that needs a secret
 handshake, a type that lies, a test that only fails locally.
 
-The policy lives here. Agents load
-[`.cursor/skills/friction-log/SKILL.md`](../../.cursor/skills/friction-log/SKILL.md)
-when they hit friction or when they are the daily investigator.
+The policy lives here. Agents that load skills on demand read the same policy
+from `.cursor/skills/friction-log/SKILL.md` or
+`.claude/skills/friction-log/SKILL.md`; agents that read a single root file get
+a pointer to this page from [`AGENTS.md`](../../AGENTS.md). All three are
+written by `friction-log init` and re-synced by `init --force`.
 
 Canonical tooling: [`educlopez/friction-log`](https://github.com/educlopez/friction-log).
 
@@ -61,6 +63,15 @@ The investigator chooses one outcome per issue:
 A skip comment includes `<!-- friction-log:skipped -->`. Later daily runs ignore
 that issue until @educlopez comments (approve the recommendation, close it, or
 give a different approach).
+
+After a successful spawn the sweep comments
+`<!-- friction-log:claimed:YYYY-MM-DD -->` on every issue it handed to the
+agent, so a second run the same UTC day finds nothing eligible and does not
+spawn a rival investigator. `--force` ignores the claim. A claim counts only
+when `github-actions[bot]` or an owner login wrote it — otherwise any commenter
+on a public repository could suppress the day's sweep. When a claim write
+fails, the sweep still finishes and names the unclaimed issues in
+`result.unclaimed`; those issues can draw a second agent later that day.
 
 ## Operator controls
 

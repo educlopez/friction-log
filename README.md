@@ -18,8 +18,10 @@ That copies:
 
 - `.github/ISSUE_TEMPLATE/friction.yml`
 - `.github/workflows/friction-log.yml` — calls `educlopez/friction-log@v1`
+- `.claude/skills/friction-log/SKILL.md`
 - `.cursor/skills/friction-log/SKILL.md`
 - `docs/contributing/friction-log.md`
+- `AGENTS.md` — a marked section, appended; an existing file is never overwritten
 
 Then:
 
@@ -28,7 +30,7 @@ Then:
 3. Optional kill switch: repository variable `FRICTION_LOG_PAUSED=true`
 4. Run your formatter over the generated files — templates are written plain, and a repo whose CI runs `prettier --check` (or similar) will flag them otherwise
 
-> `init` warns when a path it wrote is gitignored — `.cursor/` commonly is. Do not skip that warning: `git add` drops the file, and the sweep still spawns an agent whose prompt points at the missing skill.
+> `init` warns when a path it wrote is gitignored — `.cursor/` and `.claude/` commonly are. Do not skip that warning: `git add` drops the file, and the sweep still spawns an agent whose prompt points at the missing skill.
 5. Pin the action to a commit SHA — `init` writes the moving `@v1` tag, but a mutable tag means trusting every future commit. Resolve it with `gh api repos/educlopez/friction-log/git/ref/tags/v1 -q .object.sha` and write `uses: educlopez/friction-log@<sha>  # vX.Y.Z`
 
 One `CURSOR_API_KEY` per GitHub account is enough; add the same secret to each

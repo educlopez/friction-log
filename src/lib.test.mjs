@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   buildInvestigatorPrompt,
+  CLAIM_BOT_LOGIN,
+  claimMarkerForDate,
   formatIssueAsData,
   isEligible,
   lastSkipIndex,
@@ -101,6 +103,80 @@ describe("isEligible", () => {
       eligible: true,
       reason: "force",
     });
+  });
+
+  it("rejects issues already claimed today by the automation", () => {
+    const today = new Date("2026-09-01T12:00:00Z");
+    const comments = [
+      { body: claimMarkerForDate(today), user: { login: CLAIM_BOT_LOGIN } },
+    ];
+
+    assert.deepEqual(isEligible(frictionIssue, comments, { now: today }), {
+      eligible: false,
+      reason: "claimed",
+    });
+  });
+
+  it("accepts a claim marker written by an owner login", () => {
+    const today = new Date("2026-09-01T12:00:00Z");
+    const comments = [
+      { body: claimMarkerForDate(today), user: { login: "Educlopez" } },
+    ];
+
+    assert.deepEqual(
+      isEligible(frictionIssue, comments, {
+        now: today,
+        ownerLogins: ["educlopez"],
+      }),
+      { eligible: false, reason: "claimed" }
+    );
+  });
+
+  it("ignores a claim marker from an untrusted commenter", () => {
+    const today = new Date("2026-09-01T12:00:00Z");
+    const comments = [
+      { body: claimMarkerForDate(today), user: { login: "drive-by" } },
+    ];
+
+    assert.deepEqual(isEligible(frictionIssue, comments, { now: today }), {
+      eligible: true,
+      reason: "open",
+    });
+  });
+
+  it("ignores an unattributed claim marker", () => {
+    const today = new Date("2026-09-01T12:00:00Z");
+    const comments = [{ body: claimMarkerForDate(today) }];
+
+    assert.deepEqual(isEligible(frictionIssue, comments, { now: today }), {
+      eligible: true,
+      reason: "open",
+    });
+  });
+
+  it("ignores claim markers from other days", () => {
+    const today = new Date("2026-09-01T12:00:00Z");
+    const yesterday = new Date("2026-08-31T12:00:00Z");
+    const comments = [
+      { body: claimMarkerForDate(yesterday), user: { login: CLAIM_BOT_LOGIN } },
+    ];
+
+    assert.deepEqual(isEligible(frictionIssue, comments, { now: today }), {
+      eligible: true,
+      reason: "open",
+    });
+  });
+
+  it("force includes issues claimed today", () => {
+    const today = new Date("2026-09-01T12:00:00Z");
+    const comments = [
+      { body: claimMarkerForDate(today), user: { login: CLAIM_BOT_LOGIN } },
+    ];
+
+    assert.deepEqual(
+      isEligible(frictionIssue, comments, { force: true, now: today }),
+      { eligible: true, reason: "force" }
+    );
   });
 });
 

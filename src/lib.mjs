@@ -1,5 +1,6 @@
 export const SKIP_MARKER = "<!-- friction-log:skipped -->";
 export const CLAIM_MARKER_PREFIX = "<!-- friction-log:claimed:";
+export const CLAIM_BOT_LOGIN = "github-actions[bot]";
 export const FRICTION_LABEL = "friction";
 export const MAX_ISSUE_TEXT_CHARS = 4000;
 export const MAX_ISSUES_IN_PROMPT = 20;
@@ -50,14 +51,28 @@ export function claimMarkerForDate(date = new Date()) {
 }
 
 /**
- * @param {{ body?: string | null }[]} comments
+ * A claim only counts when a trusted identity wrote it. Anyone can comment on
+ * a public issue, so an unauthenticated marker would let a stranger suppress
+ * the investigator for the day with no escape hatch but `--force`.
+ *
+ * @param {FrictionComment[]} comments
  * @param {Date} [date]
+ * @param {string[]} [ownerLogins]
  * @returns {boolean}
  */
-export function isClaimedOnDate(comments, date = new Date()) {
+export function isClaimedOnDate(
+  comments,
+  date = new Date(),
+  ownerLogins = DEFAULT_OWNER_LOGINS
+) {
   const marker = claimMarkerForDate(date);
+  const trusted = [CLAIM_BOT_LOGIN, ...ownerLogins];
 
-  return comments.some((comment) => comment.body?.includes(marker));
+  return comments.some(
+    (comment) =>
+      comment.body?.includes(marker) === true &&
+      isOwnerComment(comment.user ?? {}, trusted)
+  );
 }
 
 /**
@@ -117,7 +132,7 @@ export function isEligible(issue, comments, options = {}) {
     return { eligible: true, reason: "force" };
   }
 
-  if (isClaimedOnDate(comments, now)) {
+  if (isClaimedOnDate(comments, now, ownerLogins)) {
     return { eligible: false, reason: "claimed" };
   }
 

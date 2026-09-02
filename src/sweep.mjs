@@ -325,6 +325,7 @@ export async function runSweep(options) {
     repo,
     skippedCount,
     spawned: false,
+    unclaimed: null,
   };
 
   if (eligibleIssues.length === 0) {
@@ -371,12 +372,25 @@ export async function runSweep(options) {
   result.spawned = true;
   result.agentUrl = agentUrl;
 
+  // The agent is already running. A failed claim write must not abort the
+  // sweep: that would drop the final JSON and the GitHub output, and the run
+  // would look like the spawn itself failed.
   const claimBody = claimMarkerForDate();
-  await Promise.all(
+  const claims = await Promise.allSettled(
     eligibleIssues.map((issue) =>
       postIssueComment(repo, token, Number(issue.number), claimBody)
     )
   );
+  const unclaimed = eligibleIssues
+    .filter((_, index) => claims[index].status === "rejected")
+    .map((issue) => Number(issue.number));
+
+  if (unclaimed.length > 0) {
+    result.unclaimed = unclaimed.join(",");
+    console.warn(
+      `Claim comment failed for issue(s) ${unclaimed.join(", ")}. A later run today may spawn a second investigator.`
+    );
+  }
 
   console.log(`Spawned investigator: ${agentUrl ?? JSON.stringify(spawned)}`);
   return finishSweep(result);

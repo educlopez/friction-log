@@ -83,7 +83,7 @@ numbers in `result.unclaimed`. They can draw a second agent later that day.
 
 | Command / control                        | Purpose                                 |
 | ---------------------------------------- | --------------------------------------- |
-| `npx github:educlopez/friction-log@bb972a83621af7ffa7d993f22791ba70dd4d2995 scan` | Read-only eligibility scan. No agent. Same pin as the workflow above. |
+| `npx github:educlopez/friction-log@3ddd41bef9451be0967a4f55d8e08163231718f8 scan` | Read-only eligibility scan. No agent. Same pin as the workflow above. |
 | Repo variable `FRICTION_LOG_PAUSED=true` | Kill switch: scan, but do not spawn.    |
 | Actions → Friction log → Run workflow    | Manual sweep (`dry_run`, `force`).      |
 

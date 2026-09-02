@@ -5,6 +5,7 @@ import {
   DEFAULT_OWNER_LOGINS,
   FRICTION_LABEL,
   isEligible,
+  MAX_ISSUES_IN_PROMPT,
 } from "./lib.mjs";
 
 const GITHUB_API = "https://api.github.com";
@@ -337,8 +338,11 @@ export async function runSweep(options) {
     return finishSweep(result);
   }
 
+  // The prompt lists at most MAX_ISSUES_IN_PROMPT issues. Claiming more than
+  // that would suppress issues the agent was never told to investigate.
+  const investigated = eligibleIssues.slice(0, MAX_ISSUES_IN_PROMPT);
   const prompt = buildInvestigatorPrompt(
-    eligibleIssues.map((issue) => ({
+    investigated.map((issue) => ({
       body: typeof issue.body === "string" ? issue.body : "",
       html_url: typeof issue.html_url === "string" ? issue.html_url : "",
       number: Number(issue.number),
@@ -377,11 +381,11 @@ export async function runSweep(options) {
   // would look like the spawn itself failed.
   const claimBody = claimMarkerForDate();
   const claims = await Promise.allSettled(
-    eligibleIssues.map((issue) =>
+    investigated.map((issue) =>
       postIssueComment(repo, token, Number(issue.number), claimBody)
     )
   );
-  const unclaimed = eligibleIssues
+  const unclaimed = investigated
     .filter((_, index) => claims[index].status === "rejected")
     .map((issue) => Number(issue.number));
 

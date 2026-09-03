@@ -2,13 +2,16 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   buildAgentRequest,
+  COMMENTS_PAGE_SIZE,
   DEFAULT_MODEL,
   extractAgentUrl,
+  fetchAllPages,
   parseArgs,
   resolveModel,
   resolveOwnerLogins,
   resolveRepo,
 } from "./sweep.mjs";
+import { AUTOMATION_LOGINS, claimMarkerForDate, isEligible } from "./lib.mjs";
 
 describe("parseArgs", () => {
   it("defaults to a dry scan", () => {
@@ -97,6 +100,56 @@ describe("resolveModel", () => {
   });
 });
 
+describe("fetchAllPages", () => {
+  it("concatenates every page until a short final page", async () => {
+    const pages = [
+      Array.from({ length: COMMENTS_PAGE_SIZE }, (_, i) => ({ id: i })),
+      [{ id: COMMENTS_PAGE_SIZE }],
+    ];
+    let page = 0;
+
+    const all = await fetchAllPages(async () => pages[page++]);
+
+    assert.equal(all.length, COMMENTS_PAGE_SIZE + 1);
+    assert.equal(/** @type {{ id: number }} */ (all.at(-1)).id, COMMENTS_PAGE_SIZE);
+  });
+
+  it("feeds paginated comments past the first page into eligibility checks", async () => {
+    const today = new Date("2026-09-01T12:00:00Z");
+    const pages = [
+      Array.from({ length: COMMENTS_PAGE_SIZE }, (_, i) => ({
+        body: `filler ${i}`,
+        user: { login: "someone" },
+      })),
+      [
+        {
+          body: claimMarkerForDate(today),
+          user: { login: AUTOMATION_LOGINS[0] },
+        },
+      ],
+    ];
+    let page = 0;
+    const comments = await fetchAllPages(async () => pages[page++]);
+    const firstPageOnly = pages[0];
+
+    assert.deepEqual(
+      isEligible(
+        { labels: [{ name: "friction" }], state: "open" },
+        firstPageOnly,
+        { now: today }
+      ),
+      { eligible: true, reason: "open" }
+    );
+    assert.deepEqual(
+      isEligible(
+        { labels: [{ name: "friction" }], state: "open" },
+        comments,
+        { now: today }
+      ),
+      { eligible: false, reason: "claimed" }
+    );
+  });
+});
 describe("buildAgentRequest", () => {
   const base = { prompt: "hi", repo: "acme/widgets", startingRef: "main" };
 

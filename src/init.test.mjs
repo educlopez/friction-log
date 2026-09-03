@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { describe, it } from "node:test";
 import {
   AGENTS_MARKER,
+  FRICTION_LOG_HEADING,
   ignoredPaths,
   initRepo,
   mergeAgentsSection,
@@ -105,6 +106,31 @@ describe("initRepo", () => {
     assert.equal(await readFile(join(dest, "AGENTS.md"), "utf8"), first);
     assert.equal(second.written.includes("AGENTS.md"), false);
   });
+
+  it("warns and skips when AGENTS.md already has a hand-written friction log section", async () => {
+    const dest = await mkdtemp(join(tmpdir(), "friction-log-init-"));
+    await writeFile(
+      join(dest, "AGENTS.md"),
+      "# Repo\n\n## Friction log\n\nLoad `.cursor/skills/friction-log/SKILL.md`.\n"
+    );
+    const logs = [];
+    const original = console.log;
+    console.log = (...args) => logs.push(args.join(" "));
+
+    try {
+      const result = await initRepo("educlopez/smoothui", dest);
+      const agents = await readFile(join(dest, "AGENTS.md"), "utf8");
+
+      assert.equal(result.written.includes("AGENTS.md"), false);
+      assert.equal(agents.includes(AGENTS_MARKER), false);
+      assert.equal(
+        logs.some((line) => line.includes("WARNING AGENTS.md already has a `## Friction log`")),
+        true
+      );
+    } finally {
+      console.log = original;
+    }
+  });
 });
 
 describe("readRegularFile", () => {
@@ -156,6 +182,17 @@ describe("mergeAgentsSection", () => {
     assert.deepEqual(mergeAgentsSection("\n  \n", section), {
       action: "created",
       text: `${AGENTS_MARKER}\n\n## Friction log\n`,
+    });
+  });
+
+  it("refuses to append when a hand-written friction log heading is present", () => {
+    const existing =
+      "# Repo\n\n## Friction log\n\nLoad `.cursor/skills/friction-log/SKILL.md`.\n";
+
+    assert.equal(FRICTION_LOG_HEADING.test(existing), true);
+    assert.deepEqual(mergeAgentsSection(existing, section), {
+      action: "duplicate-heading",
+      text: existing,
     });
   });
 });

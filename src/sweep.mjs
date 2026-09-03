@@ -68,24 +68,50 @@ async function listOpenFrictionIssues(repo, token) {
   return issues;
 }
 
+/** GitHub issue comments are returned oldest-first; one page misses markers past 100. */
+export const COMMENTS_PAGE_SIZE = 100;
+
+/**
+ * @param {(page: number) => Promise<unknown[]>} fetchPage
+ * @param {number} [pageSize]
+ */
+export async function fetchAllPages(fetchPage, pageSize = COMMENTS_PAGE_SIZE) {
+  /** @type {unknown[]} */
+  const all = [];
+  let page = 1;
+
+  while (true) {
+    const batch = await fetchPage(page);
+
+    if (!Array.isArray(batch)) {
+      throw new Error("GitHub paginated response was not an array");
+    }
+
+    all.push(...batch);
+
+    if (batch.length < pageSize) {
+      break;
+    }
+
+    page += 1;
+  }
+
+  return all;
+}
+
 /**
  * @param {string} repo
  * @param {string} token
  * @param {number} issueNumber
  */
 async function listComments(repo, token, issueNumber) {
-  /** @type {unknown[]} */
-  const comments = await githubJson(
-    repo,
-    token,
-    `/issues/${issueNumber}/comments?per_page=100`
+  return fetchAllPages((page) =>
+    githubJson(
+      repo,
+      token,
+      `/issues/${issueNumber}/comments?per_page=${COMMENTS_PAGE_SIZE}&page=${page}`
+    )
   );
-
-  if (!Array.isArray(comments)) {
-    throw new Error("GitHub comments response was not an array");
-  }
-
-  return comments;
 }
 
 /**

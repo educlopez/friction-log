@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 const PACKAGE_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 
 export const AGENTS_MARKER = "<!-- friction-log:agents -->";
+export const FRICTION_LOG_HEADING = /^## Friction log\s*$/m;
 
 /**
  * @param {string} url
@@ -97,7 +98,7 @@ export async function readRegularFile(path) {
  *
  * @param {string | null} existing Current AGENTS.md content, or null when absent.
  * @param {string} section Rendered section to merge in.
- * @returns {{ action: "created" | "appended" | "present", text: string }}
+ * @returns {{ action: "created" | "appended" | "present" | "duplicate-heading", text: string }}
  */
 export function mergeAgentsSection(existing, section) {
   const body = `${section.trimEnd()}\n`;
@@ -108,6 +109,10 @@ export function mergeAgentsSection(existing, section) {
 
   if (existing.includes(AGENTS_MARKER)) {
     return { action: "present", text: existing };
+  }
+
+  if (FRICTION_LOG_HEADING.test(existing)) {
+    return { action: "duplicate-heading", text: existing };
   }
 
   return { action: "appended", text: `${existing.trimEnd()}\n\n${body}` };
@@ -180,6 +185,10 @@ export async function initRepo(repo, destRoot, options = {}) {
 
   if (agents.action === "present") {
     console.log("skip AGENTS.md (friction log section already present)");
+  } else if (agents.action === "duplicate-heading") {
+    console.log(
+      "WARNING AGENTS.md already has a `## Friction log` section that this tool did not write. Appending would duplicate the heading. Remove or replace it, then re-run."
+    );
   } else {
     await writeFile(agentsPath, agents.text);
     written.push("AGENTS.md");

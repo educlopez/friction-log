@@ -254,5 +254,6 @@ describe("buildInvestigatorPrompt outcome comment", () => {
     const prompt = buildInvestigatorPrompt([{ number: 1, title: "t" }]);
     assert.match(prompt, /REQUIRED last step/);
     assert.match(prompt, /Fixes #N/);
+    assert.match(prompt, /one PR fixes several/);
   });
 });

@@ -55,6 +55,10 @@ The investigator chooses one outcome per issue:
 | Skip          | Comments a recommended fix and marks the issue skipped until @{{OWNER}} replies.                   |
 | Fix           | Opens a PR. Low and medium risk may squash-merge after green CI. High risk stays ready-for-review. |
 
+Every outcome ends with a short outcome comment on the issue (`fixed`, `skipped`,
+`closed`, or `failed`), even when a merged PR autolink-closed it. One PR that
+fixes several issues still needs a separate comment on each.
+
 A skip comment includes `<!-- friction-log:skipped -->`. Later daily runs ignore
 that issue until @{{OWNER}} comments (approve the recommendation, close it, or
 give a different approach). The marker counts only when the automation or an

@@ -93,8 +93,9 @@ For each listed issue, choose exactly one outcome:
    request with whatever this harness gives you: Cursor Cloud's
    **ManagePullRequest**, `gh pr create`, or the equivalent. Then wait for CI. Low and
    medium risk may squash-merge after green checks. High risk stays
-   ready-for-review. Comment the PR on the issue. Close the issue when the PR
-   merges; if the PR is parked, skip the issue (outcome 3) and link the PR.
+   ready-for-review. A merged PR whose body says `Fixes #N` may autolink-close
+   the issue; that is not an outcome comment. If the PR is parked, skip the
+   issue (outcome 3) and link the PR.
 
 If @educlopez already replied after a skip, follow that reply. Do not re-skip
 the same recommendation unless new evidence changed the choice.
@@ -106,6 +107,35 @@ force-push. Never open competing PRs.
 
 Check for an existing open PR or live Cloud Agent already working the same
 issue. Review that work instead of opening a second PR.
+
+## Mandatory last step: outcome comment
+
+For **every** listed issue — every outcome above — post a short GitHub comment
+on the issue itself before you stop. State the outcome (`fixed`, `skipped`,
+`closed`, or `failed`) in one or two sentences. Link the PR if you opened one.
+Keep it under 600 characters. Never include secrets.
+
+This step is mandatory even when the issue is already closed (for example by a
+merged PR whose body says `Fixes #N`). Closing via autolink is not a comment.
+When one PR fixes several issues, post a separate outcome comment on **each**
+issue.
+
+If you cannot post the comment — the token lacks `issues: write`, or the API
+refuses — do **not** engineer around it. Manufacturing the permission (a
+workflow, a fresh token, a push to the default branch) is a far worse failure
+than a missing comment.
+
+Instead, in this order:
+
+1. **Leave the issue open.** Never close an issue whose outcome you could not
+   record. An open issue with no comment is a visible loose end; a closed one is
+   an invisible one, and the next sweep will not revisit it.
+2. **Record the outcome wherever a person will find it**, whatever the outcome
+   was. If the run produced a pull request — including one you could not finish —
+   put it in that description. If it produced none, put it in your final message
+   for the run, which stays readable in the agent transcript.
+3. Name the missing permission in the same place. That is a finding about the
+   setup, not a footnote.
 
 ## Hard limits
 
@@ -127,32 +157,3 @@ whatever the intent: it runs unreviewed code holding a repository token.
 repository or workflow permission edits, no self-approving a pull request.
 
 If a limit blocks you, that is a finding, not an obstacle. Report it and stop.
-
-## Always finish with an outcome comment
-
-This step is mandatory even when the issue is already closed (for example by a
-merged PR whose body says `Fixes #N`). Closing via autolink is not a comment.
-Post the comment on the issue before you stop.
-
-If you cannot post the comment — the token lacks `issues: write`, or the API
-refuses — do **not** engineer around it. Manufacturing the permission (a
-workflow, a fresh token, a push to the default branch) is a far worse failure
-than a missing comment.
-
-Instead, in this order:
-
-1. **Leave the issue open.** Never close an issue whose outcome you could not
-   record. An open issue with no comment is a visible loose end; a closed one is
-   an invisible one, and the next sweep will not revisit it.
-2. **Record the outcome wherever a person will find it**, whatever the outcome
-   was. If the run produced a pull request — including one you could not finish —
-   put it in that description. If it produced none, put it in your final message
-   for the run, which stays readable in the agent transcript.
-3. Name the missing permission in the same place. That is a finding about the
-   setup, not a footnote.
-
-
-After each listed issue, leave a short GitHub comment that states the outcome
-(`fixed`, `skipped`, `closed`, or `failed`) in one or two sentences. Keep it
-under 600 characters. Never include secrets. If you opened a PR, link it. If you
-cannot finish, comment `failed` with what you learned.

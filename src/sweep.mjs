@@ -4,6 +4,7 @@ import {
   claimMarkerForDate,
   DEFAULT_OWNER_LOGINS,
   FRICTION_LABEL,
+  hasTrustedOutcomeComment,
   isEligible,
   MAX_ISSUES_IN_PROMPT,
 } from "./lib.mjs";
@@ -66,6 +67,87 @@ async function listOpenFrictionIssues(repo, token) {
   }
 
   return issues;
+}
+
+/** Default lookback for closed-issue outcome checks (two daily runs). */
+export const DEFAULT_OUTCOME_LOOKBACK_MS = 48 * 60 * 60 * 1000;
+
+/**
+ * @param {NodeJS.ProcessEnv} env
+ * @returns {number}
+ */
+export function resolveOutcomeLookbackMs(env) {
+  const raw = env.FRICTION_LOG_OUTCOME_LOOKBACK_HOURS;
+
+  if (raw === undefined || raw.trim() === "") {
+    return DEFAULT_OUTCOME_LOOKBACK_MS;
+  }
+
+  const hours = Number(raw);
+
+  if (!Number.isFinite(hours) || hours < 0) {
+    throw new Error(
+      "FRICTION_LOG_OUTCOME_LOOKBACK_HOURS must be a non-negative number"
+    );
+  }
+
+  return hours * 60 * 60 * 1000;
+}
+
+/**
+ * @param {string} repo
+ * @param {string} token
+ * @param {Date} since
+ */
+async function listClosedFrictionIssuesSince(repo, token, since) {
+  /** @type {unknown[]} */
+  const issues = await githubJson(
+    repo,
+    token,
+    `/issues?labels=${FRICTION_LABEL}&state=closed&since=${since.toISOString()}&per_page=100`
+  );
+
+  if (!Array.isArray(issues)) {
+    throw new Error("GitHub issues response was not an array");
+  }
+
+  return issues.filter(
+    (issue) =>
+      typeof issue === "object" &&
+      issue !== null &&
+      "number" in issue &&
+      !("pull_request" in issue && issue.pull_request)
+  );
+}
+
+/**
+ * Closed friction issues touched since `since` that lack a trusted outcome
+ * comment (only claim/skip markers from automation or owners).
+ *
+ * @param {string} repo
+ * @param {string} token
+ * @param {Date} since
+ * @param {string[]} ownerLogins
+ * @returns {Promise<number[]>}
+ */
+export async function findMissingOutcomeComments(
+  repo,
+  token,
+  since,
+  ownerLogins
+) {
+  const closedIssues = await listClosedFrictionIssuesSince(repo, token, since);
+  const checked = await Promise.all(
+    closedIssues.map(async (issue) => {
+      const comments = await listComments(repo, token, Number(issue.number));
+      return {
+        issueNumber: Number(issue.number),
+        missing: !hasTrustedOutcomeComment(comments, ownerLogins),
+      };
+    })
+  );
+
+  return checked.filter(({ missing }) => missing).map(({ issueNumber }) => issueNumber);
 }
 
 /** GitHub issue comments are returned oldest-first; one page misses markers past 100. */
@@ -315,6 +397,15 @@ export async function runSweep(options) {
   }
 
   const openIssues = await listOpenFrictionIssues(repo, token);
+  const outcomeSince = new Date(
+    Date.now() - resolveOutcomeLookbackMs(env)
+  );
+  const missingOutcome = await findMissingOutcomeComments(
+    repo,
+    token,
+    outcomeSince,
+    ownerLogins
+  );
   const numberedIssues = openIssues.filter(
     (issue) => typeof issue === "object" && issue !== null && "number" in issue
   );
@@ -346,6 +437,7 @@ export async function runSweep(options) {
     agentUrl: null,
     dryRun: options.dryRun,
     eligibleCount: eligibleIssues.length,
+    missingOutcome: missingOutcome.length > 0 ? missingOutcome.join(",") : null,
     model: model ?? "default",
     openCount: openIssues.length,
     paused,
@@ -354,6 +446,12 @@ export async function runSweep(options) {
     spawned: false,
     unclaimed: null,
   };
+
+  if (missingOutcome.length > 0) {
+    console.warn(
+      `Closed friction issue(s) missing an outcome comment: ${missingOutcome.join(", ")}`
+    );
+  }
 
   if (eligibleIssues.length === 0) {
     return finishSweep(result);

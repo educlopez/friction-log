@@ -85,6 +85,13 @@ up instead of being silenced unread.
 When a claim write fails the sweep still finishes, and names those issue
 numbers in `result.unclaimed`. They can draw a second agent later that day.
 
+After each run the sweep also checks recently closed `friction` issues (default:
+last 48 hours, overridable via `FRICTION_LOG_OUTCOME_LOOKBACK_HOURS`) for a
+trusted outcome comment — prose from `github-actions[bot]`, `cursor[bot]`, or
+an owner, beyond claim and skip markers. Issue numbers without one are listed in
+`result.missingOutcome` and logged as a warning. Reporting only; the sweep does
+not reopen closed issues.
+
 ## Operator controls
 
 | Command / control                        | Purpose                                 |

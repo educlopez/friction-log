@@ -104,6 +104,55 @@ function isOwnerComment(user, ownerLogins) {
 }
 
 /**
+ * @param {string[]} [ownerLogins]
+ * @returns {string[]}
+ */
+export function trustedLogins(ownerLogins = DEFAULT_OWNER_LOGINS) {
+  return [...AUTOMATION_LOGINS, ...ownerLogins];
+}
+
+/**
+ * True when the body is empty or only friction-log control markers (claim or
+ * skip). Investigators must leave a separate outcome comment beyond these.
+ *
+ * @param {string | null | undefined} body
+ * @returns {boolean}
+ */
+export function isControlMarkerComment(body) {
+  if (typeof body !== "string" || body.trim().length === 0) {
+    return true;
+  }
+
+  let rest = body.trim();
+
+  while (rest.includes(SKIP_MARKER)) {
+    rest = rest.replace(SKIP_MARKER, "");
+  }
+
+  rest = rest.replaceAll(/<!-- friction-log:claimed:\d{4}-\d{2}-\d{2} -->/g, "");
+
+  return rest.trim().length === 0;
+}
+
+/**
+ * @param {FrictionComment[]} comments
+ * @param {string[]} [ownerLogins]
+ * @returns {boolean}
+ */
+export function hasTrustedOutcomeComment(
+  comments,
+  ownerLogins = DEFAULT_OWNER_LOGINS
+) {
+  const trusted = trustedLogins(ownerLogins);
+
+  return comments.some(
+    (comment) =>
+      isOwnerComment(comment.user ?? {}, trusted) &&
+      !isControlMarkerComment(comment.body)
+  );
+}
+
+/**
  * @typedef {{
  *   state?: string
  *   labels?: Array<string | { name?: string }>

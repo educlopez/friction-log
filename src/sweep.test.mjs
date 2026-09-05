@@ -4,14 +4,21 @@ import {
   buildAgentRequest,
   COMMENTS_PAGE_SIZE,
   DEFAULT_MODEL,
+  DEFAULT_OUTCOME_LOOKBACK_MS,
   extractAgentUrl,
   fetchAllPages,
   parseArgs,
   resolveModel,
+  resolveOutcomeLookbackMs,
   resolveOwnerLogins,
   resolveRepo,
 } from "./sweep.mjs";
-import { AUTOMATION_LOGINS, claimMarkerForDate, isEligible } from "./lib.mjs";
+import {
+  AUTOMATION_LOGINS,
+  claimMarkerForDate,
+  hasTrustedOutcomeComment,
+  isEligible,
+} from "./lib.mjs";
 
 describe("parseArgs", () => {
   it("defaults to a dry scan", () => {
@@ -148,6 +155,38 @@ describe("fetchAllPages", () => {
       ),
       { eligible: false, reason: "claimed" }
     );
+  });
+});
+describe("resolveOutcomeLookbackMs", () => {
+  it("defaults to 48 hours", () => {
+    assert.equal(resolveOutcomeLookbackMs({}), DEFAULT_OUTCOME_LOOKBACK_MS);
+  });
+
+  it("reads FRICTION_LOG_OUTCOME_LOOKBACK_HOURS", () => {
+    assert.equal(
+      resolveOutcomeLookbackMs({ FRICTION_LOG_OUTCOME_LOOKBACK_HOURS: "24" }),
+      24 * 60 * 60 * 1000
+    );
+  });
+
+  it("rejects invalid lookback values", () => {
+    assert.throws(
+      () => resolveOutcomeLookbackMs({ FRICTION_LOG_OUTCOME_LOOKBACK_HOURS: "x" }),
+      /FRICTION_LOG_OUTCOME_LOOKBACK_HOURS/
+    );
+  });
+});
+
+describe("hasTrustedOutcomeComment integration", () => {
+  it("matches the closed-issue fixture from issues #17 and #21", () => {
+    const comments = [
+      {
+        body: "<!-- friction-log:claimed:2026-09-03 -->",
+        user: { login: AUTOMATION_LOGINS[0] },
+      },
+    ];
+
+    assert.equal(hasTrustedOutcomeComment(comments), false);
   });
 });
 describe("buildAgentRequest", () => {

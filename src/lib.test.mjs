@@ -5,6 +5,8 @@ import {
   AUTOMATION_LOGINS,
   claimMarkerForDate,
   formatIssueAsData,
+  hasTrustedOutcomeComment,
+  isControlMarkerComment,
   isEligible,
   lastSkipIndex,
   SKIP_MARKER,
@@ -255,5 +257,53 @@ describe("buildInvestigatorPrompt outcome comment", () => {
     assert.match(prompt, /REQUIRED last step/);
     assert.match(prompt, /Fixes #N/);
     assert.match(prompt, /one PR fixes several/);
+  });
+});
+
+describe("hasTrustedOutcomeComment", () => {
+  it("treats a claim marker alone as not an outcome comment", () => {
+    const comments = [
+      {
+        body: claimMarkerForDate(new Date("2026-09-03T12:00:00Z")),
+        user: { login: AUTOMATION_LOGINS[0] },
+      },
+    ];
+
+    assert.equal(isControlMarkerComment(comments[0].body), true);
+    assert.equal(hasTrustedOutcomeComment(comments), false);
+  });
+
+  it("accepts a trusted prose outcome comment", () => {
+    const comments = [
+      {
+        body: claimMarkerForDate(new Date("2026-09-03T12:00:00Z")),
+        user: { login: AUTOMATION_LOGINS[0] },
+      },
+      {
+        body: "**fixed** — merged in https://github.com/educlopez/friction-log/pull/22.",
+        user: { login: "cursor[bot]" },
+      },
+    ];
+
+    assert.equal(hasTrustedOutcomeComment(comments), true);
+  });
+
+  it("ignores outcome prose from untrusted commenters", () => {
+    const comments = [
+      {
+        body: claimMarkerForDate(new Date("2026-09-03T12:00:00Z")),
+        user: { login: AUTOMATION_LOGINS[0] },
+      },
+      { body: "fixed in PR #22", user: { login: "random" } },
+    ];
+
+    assert.equal(hasTrustedOutcomeComment(comments), false);
+  });
+
+  it("treats a skip marker alone as not an outcome comment", () => {
+    const comments = [{ body: SKIP_MARKER, user: { login: "cursor[bot]" } }];
+
+    assert.equal(isControlMarkerComment(SKIP_MARKER), true);
+    assert.equal(hasTrustedOutcomeComment(comments), false);
   });
 });

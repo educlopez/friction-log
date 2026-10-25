@@ -19,9 +19,13 @@ inputs:
     required: false
     default: 'false'
   force:
-    description: Include issues marked skipped.
+    description: Include issues marked skipped. Does not bypass the author-association filter.
     required: false
     default: 'false'
+  allowed-associations:
+    description: Comma-separated GitHub author_association values that may reach the investigator. Relabeling a third-party issue does not change this.
+    required: false
+    default: 'OWNER,MEMBER,COLLABORATOR'
   starting-ref:
     description: Git ref the Cloud Agent starts from.
     required: false
@@ -41,6 +45,7 @@ runs:
       shell: bash
       env:
         FRICTION_LOG_OWNER: ${{ inputs.owner }}
+        FRICTION_LOG_ALLOWED_ASSOCIATIONS: ${{ inputs.allowed-associations }}
         FRICTION_LOG_MODEL: ${{ inputs.model }}
         FRICTION_LOG_REF: ${{ inputs.starting-ref }}
         FRICTION_LOG_REPO: ${{ inputs.repo }}

@@ -47,9 +47,19 @@ and pin from
 [`.github/workflows/friction-log.yml`](../../.github/workflows/friction-log.yml);
 this page does not restate them.
 
-The sweep lists open `friction` issues and, when any are eligible and
-`CURSOR_API_KEY` is set, spawns one Cursor Cloud Agent on
-`educlopez/friction-log` `main`.
+The sweep lists open `friction` issues whose `author_association` is `OWNER`,
+`MEMBER`, or `COLLABORATOR` and, when any are eligible and `CURSOR_API_KEY` is
+set, spawns one Cursor Cloud Agent on `educlopez/friction-log` `main`. Issues
+from any other association — including `NONE`, `CONTRIBUTOR`, and
+`FIRST_TIME_CONTRIBUTOR` — are ignored. Relabeling a third-party issue does not
+change `author_association`; a collaborator who wants that report investigated
+files a new friction issue in their own name and quotes the useful parts as
+data. `--force` still respects this filter. The Action log records
+`Issue #<n> ineligible: author association <value> is not allowed` without the
+issue title or body.
+
+Comments that reach the investigator are filtered by the same allow list. Other
+comments are omitted from the prompt.
 
 The investigator chooses one outcome per issue:
 
@@ -74,7 +84,8 @@ After a successful spawn the sweep comments
 `<!-- friction-log:claimed:YYYY-MM-DD -->` on each issue it handed to the
 agent, and later runs the same UTC day treat those issues as ineligible. A
 second investigator is therefore spawned only for work the first one never
-received. `--force` ignores claims entirely.
+received. `--force` ignores claims and skip markers. It does not ignore the
+author-association filter.
 
 Two limits are deliberate. A claim counts only when `github-actions[bot]` or an
 owner login wrote it — otherwise any commenter on a public repository could

@@ -8,6 +8,7 @@ import {
   extractAgentUrl,
   fetchAllPages,
   parseArgs,
+  resolveAllowedAssociations,
   resolveModel,
   resolveOutcomeLookbackMs,
   resolveOwnerLogins,
@@ -88,6 +89,25 @@ describe("resolveOwnerLogins", () => {
   });
 });
 
+describe("resolveAllowedAssociations", () => {
+  it("defaults to OWNER, MEMBER, COLLABORATOR", () => {
+    assert.deepEqual(resolveAllowedAssociations({}), [
+      "OWNER",
+      "MEMBER",
+      "COLLABORATOR",
+    ]);
+  });
+
+  it("reads FRICTION_LOG_ALLOWED_ASSOCIATIONS", () => {
+    assert.deepEqual(
+      resolveAllowedAssociations({
+        FRICTION_LOG_ALLOWED_ASSOCIATIONS: "owner,collaborator",
+      }),
+      ["OWNER", "COLLABORATOR"]
+    );
+  });
+});
+
 describe("resolveModel", () => {
   it("defaults to Composer so the Pro third-party pool stays untouched", () => {
     assert.equal(resolveModel({}), DEFAULT_MODEL);
@@ -141,7 +161,11 @@ describe("fetchAllPages", () => {
 
     assert.deepEqual(
       isEligible(
-        { labels: [{ name: "friction" }], state: "open" },
+        {
+          author_association: "OWNER",
+          labels: [{ name: "friction" }],
+          state: "open",
+        },
         firstPageOnly,
         { now: today }
       ),
@@ -149,7 +173,11 @@ describe("fetchAllPages", () => {
     );
     assert.deepEqual(
       isEligible(
-        { labels: [{ name: "friction" }], state: "open" },
+        {
+          author_association: "OWNER",
+          labels: [{ name: "friction" }],
+          state: "open",
+        },
         comments,
         { now: today }
       ),

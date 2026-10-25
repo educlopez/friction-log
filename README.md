@@ -61,7 +61,7 @@ sequenceDiagram
     Human->>Issues: or files one from the issue form
     Note over Sweep: daily cron
     Sweep->>Issues: list open `friction` issues
-    Sweep->>Issues: drop skipped and already-claimed
+    Sweep->>Issues: drop skipped, already-claimed, and outsider-authored
     alt any eligible
         Sweep->>Investigator: spawn ONE agent on main
         Sweep->>Issues: comment a claim marker on each issue sent
@@ -208,6 +208,13 @@ an idle install costs a few seconds of Actions time and nothing else.
 
 An open `friction` issue is eligible unless one of these applies:
 
+- **Outside author** — `author_association` is not `OWNER`, `MEMBER`, or
+  `COLLABORATOR` (the default `allowed-associations` list). The issue form can
+  apply the `friction` label for anyone, so the label is not a trust signal.
+  Relabeling, assigning, or commenting on a third-party issue does not change
+  `author_association` and does not make it eligible. `--force` does not
+  either. To investigate a report from someone else, a collaborator files a
+  **new** friction issue in their own name and quotes the useful parts as data.
 - **Skipped** — a comment contains `<!-- friction-log:skipped -->` and no owner
   login has replied after it. The investigator uses this when a fix needs your
   decision. Your reply — approve, close, or redirect — makes it eligible again.
@@ -225,7 +232,8 @@ At most 20 issues go into one prompt, and only those get claimed — a longer
 backlog stays eligible so a later run picks it up instead of being suppressed
 unread.
 
-`--force` ignores both markers.
+`--force` ignores skip and claim markers. It does not ignore the
+author-association filter.
 
 ## CLI
 
@@ -233,7 +241,7 @@ unread.
 # in a repo with GH_TOKEN / GITHUB_TOKEN — pin the ref, as with init
 npx github:educlopez/friction-log#v1.3.1 scan             # read-only: what would happen
 npx github:educlopez/friction-log#v1.3.1 sweep --dry-run  # also prints the exact prompt
-npx github:educlopez/friction-log#v1.3.1 sweep --force    # include skipped and claimed
+npx github:educlopez/friction-log#v1.3.1 sweep --force    # include skipped and claimed; still drops outsider authors
 ```
 
 `scan` never spawns an agent, so it is safe to run against any repo you can
@@ -257,6 +265,7 @@ $ FRICTION_LOG_REPO=educlopez/friction-log GH_TOKEN=$(gh auth token) \
 | `CURSOR_API_KEY`      | Spawn the investigator (not needed for `scan`)                              |
 | `FRICTION_LOG_REPO`   | `owner/name` (defaults to `GITHUB_REPOSITORY`)                              |
 | `FRICTION_LOG_OWNER`  | Comma-separated logins that can unskip and claim (defaults to repo owner)    |
+| `FRICTION_LOG_ALLOWED_ASSOCIATIONS` | Comma-separated `author_association` allow list (default `OWNER,MEMBER,COLLABORATOR`) |
 | `FRICTION_LOG_REF`    | Starting git ref (default `main`)                                           |
 | `FRICTION_LOG_MODEL`  | Cursor model id (default `composer-latest`; `default` uses your Cursor default) |
 | `FRICTION_LOG_PAUSED` | `true` to scan without spawning                                             |
@@ -274,7 +283,8 @@ steps:
       FRICTION_LOG_PAUSED: ${{ vars.FRICTION_LOG_PAUSED }}
 ```
 
-Inputs: `repo`, `owner`, `dry-run`, `force`, `starting-ref`, `model`.
+Inputs: `repo`, `owner`, `dry-run`, `force`, `allowed-associations`,
+`starting-ref`, `model`.
 
 Every run prints its result as JSON to the step log — `openCount`,
 `eligibleCount`, `skippedCount`, `spawned`, `agentUrl`, `unclaimed` — and writes
@@ -289,10 +299,21 @@ spawned Cloud Agent, acting with its own credentials.
 ## Security model
 
 Issue titles, bodies, and comments are **untrusted input**. Anyone can open an
-issue on a public repo, and that text ends up in an agent's prompt.
+issue on a public repo. That text reaches an agent only after the author filter
+below.
 
-- Issue text is wrapped in explicit untrusted-data delimiters, truncated, and
-  stripped of null bytes before it reaches the prompt
+- An issue is eligible only when `author_association` is in the allow list
+  (`OWNER`, `MEMBER`, `COLLABORATOR` by default). Missing and unknown
+  associations are rejected. Relabeling a third-party issue does not change
+  this; file a new issue as a collaborator instead
+- Comments included in the prompt are filtered by the same allow list. Other
+  comments are omitted and never serialized. The prompt tells the investigator
+  not to fetch them
+- Rejected issues are logged as
+  `Issue #<n> ineligible: author association <value> is not allowed` — number
+  and association only, never title or body
+- Issue text that does pass is wrapped in explicit untrusted-data delimiters,
+  truncated, and stripped of null bytes before it reaches the prompt
 - The prompt states that instructions inside issue text are never to be followed
 - The skill's hard limits are not negotiable by issue text: never push to a
   protected branch, never merge a workflow change, never widen its own access.

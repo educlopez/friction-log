@@ -3,10 +3,13 @@ import {
   buildInvestigatorPrompt,
   claimMarkerForDate,
   DEFAULT_OWNER_LOGINS,
+  describeAuthorAssociation,
   FRICTION_LABEL,
   hasTrustedOutcomeComment,
   isEligible,
   MAX_ISSUES_IN_PROMPT,
+  parseAllowedAssociations,
+  trustedIssueComments,
 } from "./lib.mjs";
 
 const GITHUB_API = "https://api.github.com";
@@ -379,6 +382,10 @@ export function resolveOwnerLogins(env, repo) {
     .filter(Boolean);
 }
 
+export function resolveAllowedAssociations(env) {
+  return parseAllowedAssociations(env.FRICTION_LOG_ALLOWED_ASSOCIATIONS);
+}
+
 /**
  * @param {{ dryRun: boolean, force: boolean, env?: NodeJS.ProcessEnv }} options
  */
@@ -386,6 +393,7 @@ export async function runSweep(options) {
   const env = options.env ?? process.env;
   const repo = resolveRepo(env);
   const ownerLogins = resolveOwnerLogins(env, repo);
+  const allowedAssociations = resolveAllowedAssociations(env);
   const startingRef = env.FRICTION_LOG_REF || "main";
   const model = resolveModel(env);
   const paused = env.FRICTION_LOG_PAUSED === "true";
@@ -416,23 +424,41 @@ export async function runSweep(options) {
     }))
   );
 
-  /** @type {typeof openIssues} */
-  const eligibleIssues = [];
+  /** @type {Array<{ comments: unknown[], issue: (typeof numberedIssues)[number] }>} */
+  const eligible = [];
   let skippedCount = 0;
 
   for (const { comments, issue } of withComments) {
     const verdict = isEligible(issue, comments, {
+      allowedAssociations,
       force: options.force,
       ownerLogins,
     });
 
     if (verdict.eligible) {
-      eligibleIssues.push(issue);
+      const omitted =
+        comments.length -
+        trustedIssueComments(comments, allowedAssociations).length;
+
+      if (omitted > 0) {
+        console.log(
+          `Issue #${issue.number}: omitted ${omitted} comment(s) whose author association is not allowed`
+        );
+      }
+
+      eligible.push({ comments, issue });
+    } else if (verdict.reason === "author-association") {
+      console.log(
+        `Issue #${issue.number} ineligible: author association ${describeAuthorAssociation(
+          "author_association" in issue ? issue.author_association : undefined
+        )} is not allowed`
+      );
     } else if (verdict.reason === "skipped") {
       skippedCount += 1;
     }
   }
 
+  const eligibleIssues = eligible.map(({ issue }) => issue);
   const result = {
     agentUrl: null,
     dryRun: options.dryRun,
@@ -464,15 +490,16 @@ export async function runSweep(options) {
 
   // The prompt lists at most MAX_ISSUES_IN_PROMPT issues. Claiming more than
   // that would suppress issues the agent was never told to investigate.
-  const investigated = eligibleIssues.slice(0, MAX_ISSUES_IN_PROMPT);
+  const investigated = eligible.slice(0, MAX_ISSUES_IN_PROMPT);
   const prompt = buildInvestigatorPrompt(
-    investigated.map((issue) => ({
+    investigated.map(({ comments, issue }) => ({
       body: typeof issue.body === "string" ? issue.body : "",
+      comments,
       html_url: typeof issue.html_url === "string" ? issue.html_url : "",
       number: Number(issue.number),
       title: typeof issue.title === "string" ? issue.title : "",
     })),
-    { repo }
+    { allowedAssociations, repo }
   );
 
   if (options.dryRun) {
@@ -505,13 +532,13 @@ export async function runSweep(options) {
   // would look like the spawn itself failed.
   const claimBody = claimMarkerForDate();
   const claims = await Promise.allSettled(
-    investigated.map((issue) =>
+    investigated.map(({ issue }) =>
       postIssueComment(repo, token, Number(issue.number), claimBody)
     )
   );
   const unclaimed = investigated
     .filter((_, index) => claims[index].status === "rejected")
-    .map((issue) => Number(issue.number));
+    .map(({ issue }) => Number(issue.number));
 
   if (unclaimed.length > 0) {
     result.unclaimed = unclaimed.join(",");

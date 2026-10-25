@@ -43,8 +43,13 @@ The `Friction log` GitHub Action runs on the schedule in
 [`.github/workflows/friction-log.yml`](../../.github/workflows/friction-log.yml)
 — typically early morning UTC before the working day. Stagger the cron minute
 across repos if you install in several. It uses `educlopez/friction-log@v1` to
-list open `friction` issues and, when any are eligible and `CURSOR_API_KEY` is
-set, spawn one Cursor Cloud Agent on `{{REPO}}` `main`.
+list open `friction` issues whose `author_association` is `OWNER`, `MEMBER`,
+or `COLLABORATOR` and, when any are eligible and `CURSOR_API_KEY` is set,
+spawn one Cursor Cloud Agent on `{{REPO}}` `main`. Issues from any other
+association are ignored. Relabeling a third-party issue does not change
+`author_association`; a collaborator who wants that report investigated files
+a new friction issue in their own name and quotes the useful parts as data.
+`--force` still respects this filter.
 
 The investigator chooses one outcome per issue:
 
@@ -69,7 +74,8 @@ After a successful spawn the sweep comments
 `<!-- friction-log:claimed:YYYY-MM-DD -->` on each issue it handed to the
 agent, and later runs the same UTC day treat those issues as ineligible. A
 second investigator is therefore spawned only for work the first one never
-received. `--force` ignores claims entirely.
+received. `--force` ignores claims and skip markers. It does not ignore the
+author-association filter.
 
 Two limits are deliberate. A claim counts only when `github-actions[bot]` or an
 owner login wrote it — otherwise any commenter on a public repository could
